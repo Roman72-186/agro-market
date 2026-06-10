@@ -8,6 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 AgroMarket — нативное Android-приложение (доска объявлений для агро-рынка: техника, запчасти, семена, удобрения, корма, животные, земля). Клиент к REST API `https://agroprompis.tw1.ru/api/v1/` (значение `API_BASE_URL` в [app/build.gradle.kts](app/build.gradle.kts), переопределяется через `buildConfigField`).
 
+**Репозиторий:** [github.com/Roman72-186/agro-market](https://github.com/Roman72-186/agro-market) — единственный источник правды, локальный код/git/VPS должны быть синхронизированы с ним.
+
 Стек: Kotlin 1.9.22 · Jetpack Compose (BOM 2024.02) + Material3 · Hilt 2.50 (DI) · Retrofit 2.9 + OkHttp 4.12 + Gson · DataStore Preferences (токены) · Coil (картинки) · Navigation Compose · Accompanist.
 `minSdk 26`, `targetSdk/compileSdk 34`, JDK 17, AGP 8.2.2.
 
