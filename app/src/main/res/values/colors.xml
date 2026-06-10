@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Брендовые цвета для иконки приложения и splash screen (см. plans/2026-06-10-design-modernization.md, Фаза 7) -->
+    <color name="ic_launcher_background">#F5F7F2</color>
+    <color name="splash_background">#F5F7F2</color>
+    <color name="splash_background_dark">#11150B</color>
+    <color name="status_bar">#63722E</color>
+    <color name="nav_bar">#F5F7F2</color>
+    <color name="status_bar_dark">#11150B</color>
+    <color name="nav_bar_dark">#11150B</color>
+</resources>

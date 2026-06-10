@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -14,11 +15,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Build
+import androidx.compose.material.icons.outlined.Storefront
+import androidx.compose.material.icons.outlined.Terrain
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -40,6 +43,9 @@ import kotlinx.coroutines.launch
 import ru.agromarket.data.model.*
 import ru.agromarket.data.repository.AgroRepository
 import ru.agromarket.data.repository.ApiResult
+import ru.agromarket.ui.components.AppTopBar
+import ru.agromarket.ui.components.CategoryIcon
+import ru.agromarket.ui.components.ErrorBanner
 import ru.agromarket.ui.theme.*
 import ru.agromarket.utils.FileUtils
 import javax.inject.Inject
@@ -115,6 +121,17 @@ class CreateAdViewModel @Inject constructor(
         }
     }
 
+    /** Total wizard steps: 4 when the chosen category has a subcategory step, otherwise 3. */
+    val totalSteps: Int get() = if (selectedCategory?.children.isNullOrEmpty()) 3 else 4
+
+    /** 1-based position of the current step within [totalSteps]. */
+    val stepNumber: Int get() = when (step) {
+        CreateStep.TYPE -> 1
+        CreateStep.CATEGORY -> 2
+        CreateStep.SUBCATEGORY -> 3
+        CreateStep.FORM -> totalSteps
+    }
+
     fun selectRegion(id: Int, name: String) {
         selectedRegionId = id; selectedRegionName = name
         // Reset dependent geo levels so a stale district/locality can't be submitted.
@@ -172,7 +189,7 @@ fun SearchablePickerDialog(title: String, items: List<Pair<Int, String>>, onSele
                     Text(text = name, modifier = Modifier.fillMaxWidth().clickable { onSelect(id, name) }.padding(vertical = 14.dp, horizontal = 4.dp), fontSize = 17.sp)
                     HorizontalDivider()
                 }
-                if (filtered.isEmpty()) { item { Text("Ничего не найдено", color = AgroGray, modifier = Modifier.padding(16.dp), fontSize = 16.sp) } }
+                if (filtered.isEmpty()) { item { Text("Ничего не найдено", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(16.dp), fontSize = 16.sp) } }
             }
         }
     }, confirmButton = { TextButton(onClick = onDismiss) { Text("Закрыть", fontSize = 16.sp) } })
@@ -199,25 +216,59 @@ fun CreateAdScreen(onSuccess: () -> Unit, onBack: () -> Unit, viewModel: CreateA
     }
 
     Scaffold(topBar = {
-        if (viewModel.step != CreateStep.TYPE) TopAppBar(title = { Text(when (viewModel.step) { CreateStep.CATEGORY -> "Выберите категорию"; CreateStep.SUBCATEGORY -> viewModel.selectedCategory?.name ?: ""; else -> "Новое объявление" }, fontSize = 20.sp) }, navigationIcon = { IconButton(onClick = { viewModel.goBack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Назад") } })
+        Column {
+            AppTopBar(
+                title = when (viewModel.step) {
+                    CreateStep.TYPE -> "Новое объявление"
+                    CreateStep.CATEGORY -> "Выберите категорию"
+                    CreateStep.SUBCATEGORY -> viewModel.selectedCategory?.name ?: ""
+                    CreateStep.FORM -> "Новое объявление"
+                },
+                onBack = if (viewModel.step != CreateStep.TYPE) { { viewModel.goBack() } } else null,
+            )
+            LinearProgressIndicator(
+                progress = { viewModel.stepNumber.toFloat() / viewModel.totalSteps },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Text(
+                "Шаг ${viewModel.stepNumber} из ${viewModel.totalSteps}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            )
+        }
     }) { padding ->
         when (viewModel.step) {
             // Step 1: Type
             CreateStep.TYPE -> {
                 Column(modifier = Modifier.fillMaxSize().padding(padding).padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                    Text("Что размещаем?", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                    Text("Что размещаем?", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(32.dp))
                     listOf(
-                        Triple("sell", "\uD83D\uDE9C Продать", "Зерно, технику, скот и др."),
-                        Triple("service", "\uD83D\uDD27 Агроуслуги", "Обработка, перевозка, ремонт"),
-                        Triple("land", "\uD83C\uDFDE\uFE0F Земли СХ назначения", "Продажа и аренда участков"),
-                    ).forEach { (t, label, desc) ->
-                        Card(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp).clickable { viewModel.selectType(t) }, shape = RoundedCornerShape(16.dp)) {
+                        Triple("sell", "Продать" to Icons.Outlined.Storefront, "Зерно, технику, скот и др."),
+                        Triple("service", "Агроуслуги" to Icons.Outlined.Build, "Обработка, перевозка, ремонт"),
+                        Triple("land", "Земли СХ назначения" to Icons.Outlined.Terrain, "Продажа и аренда участков"),
+                    ).forEach { (t, labelIcon, desc) ->
+                        val (label, icon) = labelIcon
+                        Card(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp).clickable { viewModel.selectType(t) },
+                            shape = MaterialTheme.shapes.large,
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                        ) {
                             Row(modifier = Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Text(label, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                                Icon(Icons.Default.ChevronRight, null, tint = AgroGray)
+                                Box(
+                                    modifier = Modifier.size(48.dp).background(MaterialTheme.colorScheme.secondaryContainer, CircleShape),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Icon(icon, null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                                }
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                    Text(desc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
-                            Text(desc, modifier = Modifier.padding(start = 20.dp, bottom = 12.dp), color = AgroGray, fontSize = 15.sp)
                         }
                     }
                 }
@@ -229,24 +280,29 @@ fun CreateAdScreen(onSuccess: () -> Unit, onBack: () -> Unit, viewModel: CreateA
                     Box(modifier = Modifier.fillMaxSize().padding(padding).padding(24.dp), contentAlignment = Alignment.Center) {
                         if (viewModel.categoriesError != null) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(Icons.Default.ErrorOutline, null, modifier = Modifier.size(48.dp), tint = AgroGray)
+                                Icon(Icons.Default.ErrorOutline, null, modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Spacer(modifier = Modifier.height(12.dp))
-                                Text(viewModel.categoriesError ?: "Не удалось загрузить категории", color = AgroGray, textAlign = TextAlign.Center)
+                                Text(viewModel.categoriesError ?: "Не удалось загрузить категории", color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Button(onClick = { viewModel.loadData() }) { Text("Повторить") }
                             }
                         } else {
-                            CircularProgressIndicator(color = AgroGreen)
+                            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                         }
                     }
                 } else {
                     LazyVerticalGrid(columns = GridCells.Fixed(3), modifier = Modifier.fillMaxSize().padding(padding).padding(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         items(viewModel.categories) { cat ->
-                            Card(modifier = Modifier.fillMaxWidth().aspectRatio(1f).clickable { viewModel.selectCategory(cat) }, shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = AgroGreenBg)) {
+                            Card(
+                                modifier = Modifier.fillMaxWidth().aspectRatio(1f).clickable { viewModel.selectCategory(cat) },
+                                shape = MaterialTheme.shapes.large,
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                            ) {
                                 Column(modifier = Modifier.fillMaxSize().padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                                    Text(cat.icon ?: "📦", fontSize = 32.sp)
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(cat.name, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, maxLines = 2)
+                                    CategoryIcon(categoryName = cat.name, size = 44.dp)
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Text(cat.name, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, maxLines = 2)
                                 }
                             }
                         }
@@ -257,13 +313,16 @@ fun CreateAdScreen(onSuccess: () -> Unit, onBack: () -> Unit, viewModel: CreateA
             // Step 3: Subcategory list
             CreateStep.SUBCATEGORY -> {
                 Column(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
-                    Text("Выберите подкатегорию:", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                    Text("Выберите подкатегорию:", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                     Spacer(modifier = Modifier.height(16.dp))
                     viewModel.selectedCategory?.children?.forEach { sub ->
-                        Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { viewModel.selectSubCategory(sub) }, shape = RoundedCornerShape(12.dp)) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { viewModel.selectSubCategory(sub) },
+                            shape = MaterialTheme.shapes.medium,
+                        ) {
                             Row(modifier = Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Text(sub.name, fontSize = 18.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
-                                Icon(Icons.Default.ChevronRight, null, tint = AgroGray)
+                                Text(sub.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+                                Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     }
@@ -276,10 +335,10 @@ fun CreateAdScreen(onSuccess: () -> Unit, onBack: () -> Unit, viewModel: CreateA
                     LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         // Show selected path
                         item {
-                            Surface(color = AgroGreen.copy(alpha = 0.1f), shape = RoundedCornerShape(8.dp)) {
+                            Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.small) {
                                 val typeLabel = when (viewModel.type) { "sell" -> "Продажа"; "service" -> "Агроуслуги"; "land" -> "Земля"; else -> viewModel.type }
                                 val path = listOfNotNull(typeLabel, viewModel.selectedCategory?.name, viewModel.selectedSubCategory?.name).joinToString(" \u203A ")
-                                Text(path, modifier = Modifier.padding(12.dp), color = AgroGreen, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                Text(path, modifier = Modifier.padding(12.dp), color = MaterialTheme.colorScheme.onPrimaryContainer, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                             }
                         }
                         item { OutlinedTextField(value = viewModel.title, onValueChange = { viewModel.title = it }, label = { Text("Название *", fontSize = 16.sp) }, singleLine = true, modifier = Modifier.fillMaxWidth(), textStyle = LocalTextStyle.current.copy(fontSize = 17.sp)) }
@@ -289,11 +348,11 @@ fun CreateAdScreen(onSuccess: () -> Unit, onBack: () -> Unit, viewModel: CreateA
 
                         // Region picker
                         item {
-                            Surface(modifier = Modifier.fillMaxWidth().clickable { showRegionPicker = true }, shape = RoundedCornerShape(4.dp), border = ButtonDefaults.outlinedButtonBorder) {
+                            Surface(modifier = Modifier.fillMaxWidth().clickable { showRegionPicker = true }, shape = MaterialTheme.shapes.medium, border = ButtonDefaults.outlinedButtonBorder) {
                                 Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text("Регион *", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                        Text(text = viewModel.selectedRegionName.ifBlank { "Нажмите для выбора" }, fontSize = 17.sp, color = if (viewModel.selectedRegionName.isBlank()) AgroGray else MaterialTheme.colorScheme.onSurface)
+                                        Text(text = viewModel.selectedRegionName.ifBlank { "Нажмите для выбора" }, fontSize = 17.sp, color = if (viewModel.selectedRegionName.isBlank()) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface)
                                     }
                                     Icon(Icons.Default.ArrowDropDown, null)
                                 }
@@ -303,12 +362,12 @@ fun CreateAdScreen(onSuccess: () -> Unit, onBack: () -> Unit, viewModel: CreateA
                         // District picker (optional) — shown once a region is chosen
                         if (viewModel.selectedRegionId != null) {
                             item {
-                                Surface(modifier = Modifier.fillMaxWidth().clickable(enabled = viewModel.districts.isNotEmpty()) { showDistrictPicker = true }, shape = RoundedCornerShape(4.dp), border = ButtonDefaults.outlinedButtonBorder) {
+                                Surface(modifier = Modifier.fillMaxWidth().clickable(enabled = viewModel.districts.isNotEmpty()) { showDistrictPicker = true }, shape = MaterialTheme.shapes.medium, border = ButtonDefaults.outlinedButtonBorder) {
                                     Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                                         Column(modifier = Modifier.weight(1f)) {
                                             Text("Район", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                             val districtHint = if (viewModel.districts.isEmpty()) "Нет районов" else "Не выбран"
-                                            Text(text = viewModel.selectedDistrictName.ifBlank { districtHint }, fontSize = 17.sp, color = if (viewModel.selectedDistrictName.isBlank()) AgroGray else MaterialTheme.colorScheme.onSurface)
+                                            Text(text = viewModel.selectedDistrictName.ifBlank { districtHint }, fontSize = 17.sp, color = if (viewModel.selectedDistrictName.isBlank()) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface)
                                         }
                                         Icon(Icons.Default.ArrowDropDown, null)
                                     }
@@ -319,12 +378,12 @@ fun CreateAdScreen(onSuccess: () -> Unit, onBack: () -> Unit, viewModel: CreateA
                         // Locality picker (optional) — shown once a district is chosen
                         if (viewModel.selectedDistrictId != null) {
                             item {
-                                Surface(modifier = Modifier.fillMaxWidth().clickable(enabled = viewModel.localities.isNotEmpty()) { showLocalityPicker = true }, shape = RoundedCornerShape(4.dp), border = ButtonDefaults.outlinedButtonBorder) {
+                                Surface(modifier = Modifier.fillMaxWidth().clickable(enabled = viewModel.localities.isNotEmpty()) { showLocalityPicker = true }, shape = MaterialTheme.shapes.medium, border = ButtonDefaults.outlinedButtonBorder) {
                                     Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                                         Column(modifier = Modifier.weight(1f)) {
                                             Text("Населённый пункт", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                             val localityHint = if (viewModel.localities.isEmpty()) "Нет населённых пунктов" else "Не выбран"
-                                            Text(text = viewModel.selectedLocalityName.ifBlank { localityHint }, fontSize = 17.sp, color = if (viewModel.selectedLocalityName.isBlank()) AgroGray else MaterialTheme.colorScheme.onSurface)
+                                            Text(text = viewModel.selectedLocalityName.ifBlank { localityHint }, fontSize = 17.sp, color = if (viewModel.selectedLocalityName.isBlank()) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface)
                                         }
                                         Icon(Icons.Default.ArrowDropDown, null)
                                     }
@@ -334,31 +393,31 @@ fun CreateAdScreen(onSuccess: () -> Unit, onBack: () -> Unit, viewModel: CreateA
 
                         // Photos
                         item {
-                            Text("Фото (мин. 2, макс. 10)", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                            Text("Фото (мин. 2, макс. 10)", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                             Spacer(modifier = Modifier.height(8.dp))
                             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 items(viewModel.photoUris) { uri ->
                                     Box(modifier = Modifier.size(90.dp)) {
-                                        AsyncImage(model = uri, contentDescription = null, modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(8.dp)), contentScale = ContentScale.Crop)
-                                        IconButton(onClick = { viewModel.removePhoto(uri) }, modifier = Modifier.align(Alignment.TopEnd).size(28.dp)) { Icon(Icons.Default.Close, null, tint = AgroRed) }
+                                        AsyncImage(model = uri, contentDescription = null, modifier = Modifier.fillMaxSize().clip(MaterialTheme.shapes.small), contentScale = ContentScale.Crop)
+                                        IconButton(onClick = { viewModel.removePhoto(uri) }, modifier = Modifier.align(Alignment.TopEnd).size(28.dp)) { Icon(Icons.Default.Close, null, tint = MaterialTheme.colorScheme.error) }
                                     }
                                 }
                                 item {
-                                    Box(modifier = Modifier.size(90.dp).clip(RoundedCornerShape(8.dp)).border(2.dp, AgroGreen.copy(alpha = 0.3f), RoundedCornerShape(8.dp)).clickable {
+                                    Box(modifier = Modifier.size(90.dp).clip(MaterialTheme.shapes.small).border(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f), MaterialTheme.shapes.small).clickable {
                                         try { photoPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) } catch (e: Exception) { fallbackLauncher.launch("image/*") }
                                     }, contentAlignment = Alignment.Center) {
-                                        Column(horizontalAlignment = Alignment.CenterHorizontally) { Icon(Icons.Default.AddAPhoto, null, tint = AgroGreen, modifier = Modifier.size(32.dp)); Text("Добавить", fontSize = 13.sp, color = AgroGreen) }
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) { Icon(Icons.Default.AddAPhoto, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp)); Text("Добавить", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary) }
                                     }
                                 }
                             }
-                            Text("${viewModel.photoUris.size} из 10 фото", fontSize = 14.sp, color = AgroGray)
+                            Text("${viewModel.photoUris.size} из 10 фото", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        viewModel.error?.let { err -> item { Text(err, color = MaterialTheme.colorScheme.error, fontSize = 15.sp) } }
+                        viewModel.error?.let { err -> item { ErrorBanner(message = err) } }
                     }
                     Spacer(modifier = Modifier.height(8.dp))
-                    Button(onClick = { viewModel.submitAd(context, onSuccess) }, modifier = Modifier.fillMaxWidth().height(54.dp), enabled = !viewModel.isLoading, shape = RoundedCornerShape(12.dp)) {
+                    Button(onClick = { viewModel.submitAd(context, onSuccess) }, modifier = Modifier.fillMaxWidth().height(54.dp), enabled = !viewModel.isLoading, shape = MaterialTheme.shapes.medium) {
                         if (viewModel.isLoading) CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
-                        else Text("Отправить на модерацию", fontSize = 17.sp)
+                        else Text("Отправить на модерацию", style = MaterialTheme.typography.titleMedium)
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                 }

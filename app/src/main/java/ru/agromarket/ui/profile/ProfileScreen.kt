@@ -3,12 +3,12 @@ package ru.agromarket.ui.profile
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
@@ -32,7 +32,9 @@ import ru.agromarket.data.model.ProfileResponse
 import ru.agromarket.data.model.ProfileUpdateRequest
 import ru.agromarket.data.repository.AgroRepository
 import ru.agromarket.data.repository.ApiResult
-import ru.agromarket.ui.theme.*
+import ru.agromarket.ui.components.AppTopBar
+import ru.agromarket.ui.components.StatusBadge
+import ru.agromarket.ui.components.adStatusBadge
 import ru.agromarket.utils.FileUtils
 import javax.inject.Inject
 
@@ -101,7 +103,7 @@ class ProfileViewModel @Inject constructor(private val repository: AgroRepositor
     fun logout(onDone: () -> Unit) { viewModelScope.launch { repository.logout(); onDone() } }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ProfileScreen(onLogout: () -> Unit, onMyAds: (String) -> Unit, viewModel: ProfileViewModel = hiltViewModel()) {
     val context = LocalContext.current
@@ -110,19 +112,18 @@ fun ProfileScreen(onLogout: () -> Unit, onMyAds: (String) -> Unit, viewModel: Pr
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        TopAppBar(
-            title = { Text("Профиль", fontWeight = FontWeight.Bold) },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = AgroGreen, titleContentColor = MaterialTheme.colorScheme.onPrimary),
-            actions = { IconButton(onClick = { viewModel.logout(onLogout) }) { Icon(Icons.AutoMirrored.Filled.Logout, "Выйти", tint = MaterialTheme.colorScheme.onPrimary) } }
+        AppTopBar(
+            title = "Профиль",
+            actions = { IconButton(onClick = { viewModel.logout(onLogout) }) { Icon(Icons.AutoMirrored.Filled.Logout, "Выйти") } }
         )
         if (viewModel.isLoading) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = AgroGreen) }
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) }
         } else if (viewModel.profile == null && viewModel.error != null) {
             Box(modifier = Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.ErrorOutline, null, modifier = Modifier.size(48.dp), tint = AgroGray)
+                    Icon(Icons.Default.ErrorOutline, null, modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(modifier = Modifier.height(12.dp))
-                    Text(viewModel.error ?: "Не удалось загрузить профиль", color = AgroGray)
+                    Text(viewModel.error ?: "Не удалось загрузить профиль", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(onClick = { viewModel.load() }) { Text("Повторить") }
                 }
@@ -131,26 +132,26 @@ fun ProfileScreen(onLogout: () -> Unit, onMyAds: (String) -> Unit, viewModel: Pr
             LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 item {
                     viewModel.profile?.let { p ->
-                        Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = AgroGreenBg)) {
+                        Card(modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
                             Column(modifier = Modifier.padding(16.dp)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Box(modifier = Modifier.size(72.dp).clip(CircleShape).clickable { avatarLauncher.launch("image/*") }) {
                                         AsyncImage(model = p.avatarUrl, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                                        Surface(modifier = Modifier.align(Alignment.BottomEnd).size(24.dp), shape = CircleShape, color = AgroGreen) {
+                                        Surface(modifier = Modifier.align(Alignment.BottomEnd).size(24.dp), shape = CircleShape, color = MaterialTheme.colorScheme.primary) {
                                             Icon(Icons.Default.CameraAlt, null, modifier = Modifier.padding(4.dp), tint = MaterialTheme.colorScheme.onPrimary)
                                         }
                                     }
                                     Spacer(modifier = Modifier.width(16.dp))
                                     Column(modifier = Modifier.weight(1f)) {
                                         if (!viewModel.isEditing) {
-                                            Text(listOfNotNull(p.lastName, p.firstName).joinToString(" ").ifBlank { "Пользователь" }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                            Text(p.email, style = MaterialTheme.typography.bodySmall, color = AgroGray)
-                                            p.phone?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = AgroGray) }
-                                            p.regionName?.let { Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.LocationOn, null, modifier = Modifier.size(14.dp), tint = AgroGray); Text(it, style = MaterialTheme.typography.bodySmall, color = AgroGray) } }
+                                            Text(listOfNotNull(p.lastName, p.firstName).joinToString(" ").ifBlank { "Пользователь" }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                                            Text(p.email, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                                            p.phone?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer) }
+                                            p.regionName?.let { Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.LocationOn, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer); Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer) } }
                                         }
                                     }
                                     if (!viewModel.isEditing) {
-                                        IconButton(onClick = { viewModel.startEditing() }) { Icon(Icons.Default.Edit, "Редактировать", tint = AgroGreen) }
+                                        IconButton(onClick = { viewModel.startEditing() }) { Icon(Icons.Default.Edit, "Редактировать", tint = MaterialTheme.colorScheme.onPrimaryContainer) }
                                     }
                                 }
                                 if (viewModel.isEditing) {
@@ -166,25 +167,25 @@ fun ProfileScreen(onLogout: () -> Unit, onMyAds: (String) -> Unit, viewModel: Pr
                                         Button(onClick = { viewModel.saveProfile() }) { Text("Сохранить") }
                                     }
                                 }
-                                viewModel.saveMessage?.let { Spacer(modifier = Modifier.height(8.dp)); Text(it, color = AgroGreen, style = MaterialTheme.typography.bodySmall) }
+                                viewModel.saveMessage?.let { Spacer(modifier = Modifier.height(8.dp)); Text(it, color = MaterialTheme.colorScheme.onPrimaryContainer, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold) }
                             }
                         }
                     }
                 }
                 item { Text("Мои объявления (${viewModel.myAds.size})", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
                 if (viewModel.myAds.isEmpty()) {
-                    item { Card(modifier = Modifier.fillMaxWidth()) { Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) { Text("У вас пока нет объявлений", color = AgroGray) } } }
+                    item { Card(modifier = Modifier.fillMaxWidth()) { Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) { Text("У вас пока нет объявлений", color = MaterialTheme.colorScheme.onSurfaceVariant) } } }
                 } else {
                     items(viewModel.myAds, key = { it.id }) { ad ->
-                        Card(modifier = Modifier.fillMaxWidth().clickable { onMyAds(ad.id) }, shape = RoundedCornerShape(12.dp)) {
+                        Card(modifier = Modifier.fillMaxWidth().animateItemPlacement().clickable { onMyAds(ad.id) }, shape = MaterialTheme.shapes.medium) {
                             Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                AsyncImage(model = ad.photoUrl, contentDescription = null, modifier = Modifier.size(60.dp).clip(RoundedCornerShape(8.dp)), contentScale = ContentScale.Crop)
+                                AsyncImage(model = ad.photoUrl, contentDescription = null, modifier = Modifier.size(60.dp).clip(MaterialTheme.shapes.small), contentScale = ContentScale.Crop)
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(ad.title, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                                    val statusLabel = when (ad.status) { "draft" -> "Черновик"; "pending_moderation" -> "На модерации"; "active" -> "Активно"; "rejected" -> "Отклонено"; else -> ad.status }
-                                    val statusColor = when (ad.status) { "active" -> AgroGreen; "rejected" -> AgroRed; "pending_moderation" -> AgroOrange; else -> AgroGray }
-                                    Text(statusLabel, style = MaterialTheme.typography.bodySmall, color = statusColor, fontWeight = FontWeight.Bold)
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    val (statusLabel, statusTone) = adStatusBadge(ad.status)
+                                    StatusBadge(text = statusLabel, tone = statusTone)
                                 }
                             }
                         }

@@ -201,6 +201,29 @@ dark theme работает (хотя бы базово, без доработк
   (после Фазы 0 типографика подтянется автоматически, но проверить визуально).
 - Блок загрузки фото — обновить плейсхолдер "Добавить" под новую палитру.
 
+**Сделано:**
+- `TopAppBar`/условный заголовок заменены на общий `AppTopBar` (показывается на всех шагах,
+  кнопка "назад" — везде кроме первого шага "Что размещаем?").
+- Прогресс мастера: под `AppTopBar` добавлены `LinearProgressIndicator` и текст
+  "Шаг X из Y" — `ViewModel.stepNumber`/`totalSteps` (3 шага без подкатегории, 4 — с ней).
+- Шаг "Что размещаем?": эмодзи в карточках типов заменены на `Icons.Outlined.Storefront`/
+  `Build`/`Terrain` в круглом бейдже (`secondaryContainer`, как в `CategoryIcon`), карточки —
+  `shapes.large` + `CardDefaults.cardElevation`, текст — `MaterialTheme.typography.*`.
+- Грид категорий (шаг 2): эмодзи `cat.icon` заменён на `CategoryIcon(categoryName = cat.name)`,
+  карточки — `shapes.large`, `colorScheme.surfaceVariant`, небольшая elevation.
+- Подкатегории (шаг 3) — карточки на `shapes.medium`, текст/иконка через
+  `typography`/`onSurfaceVariant`.
+- Форма (шаг 4): блок "путь" (тип › категория › подкатегория) — `primaryContainer`/
+  `onPrimaryContainer` вместо `AgroGreen.copy(alpha=0.1f)`; пикеры регион/район/нас.пункт —
+  `shapes.medium` вместо `RoundedCornerShape(4.dp)`, подсказки — `onSurfaceVariant` вместо
+  `AgroGray`; плейсхолдер "Добавить фото" и счётчик фото — токены `colorScheme.primary`/
+  `onSurfaceVariant`/`error` вместо `AgroGreen`/`AgroGray`/`AgroRed`; ошибка формы —
+  через общий `ErrorBanner`; кнопка "Отправить на модерацию" — `shapes.medium`,
+  `typography.titleMedium`.
+- Загрузка/ошибка категорий (шаг 2 без данных) — цвета на `colorScheme.primary`/
+  `onSurfaceVariant` вместо `AgroGreen`/`AgroGray` (dark theme).
+- `./gradlew assembleDebug` — успешно.
+
 ---
 
 ## Фаза 6 — Favorites / Profile
@@ -215,6 +238,31 @@ dark theme работает (хотя бы базово, без доработк
   рассмотреть выделение центрального пункта "Разместить" как акцентной кнопки (FAB-стиль)
   вместо равнозначной иконки в `NavigationBar`.
 
+**Сделано:**
+- `TopAppBar` в Favorites/Profile заменён на общий `AppTopBar` (Profile — кнопка "выйти"
+  в `actions`).
+- Новый компонент [FavoriteRow.kt](../app/src/main/java/ru/agromarket/ui/components/FavoriteRow.kt) —
+  компактная строка избранного: миниатюра 72dp (`shapes.medium`, плейсхолдер `Icons.Outlined.Image`
+  на `surfaceVariant`, как в `AdCard`), заголовок, цена шрифтом `JetBrainsMono` на
+  `colorScheme.primary`, опциональный `StatusBadge`/`adStatusBadge(adStatus)` под заголовком,
+  кнопка "убрать из избранного" — `Icons.Filled.Favorite` на `colorScheme.error`. Карточка —
+  `shapes.large`.
+- Пустой список избранного — `EmptyState` (`Icons.Outlined.FavoriteBorder`, заголовок "Нет
+  избранных", подпись-подсказка), загрузка — `CircularProgressIndicator` на `colorScheme.primary`.
+- Profile: карточка профиля — `colorScheme.primaryContainer`/`onPrimaryContainer` вместо
+  `AgroGreenBg`/дефолтных цветов текста, `shapes.large`; кружок камеры аватара —
+  `colorScheme.primary`/`onPrimary` вместо `AgroGreen`; иконка редактирования —
+  `onPrimaryContainer`; сообщение "Сохранено!"/ошибка сохранения — `onPrimaryContainer`,
+  полужирным.
+- Список "Мои объявления": статус-бейдж объявления (`adStatusBadge` + `StatusBadge` из Фазы 1)
+  вместо ручного `when` с цветами `AgroGreen`/`AgroRed`/`AgroOrange`/`AgroGray`; карточки —
+  `shapes.medium`, фото — `shapes.small`. Состояние ошибки загрузки профиля — иконка/текст на
+  `colorScheme.onSurfaceVariant` вместо `AgroGray`.
+- Bottom navigation: центральный пункт "Разместить" — иконка в круге `colorScheme.primary`/
+  `onPrimary` (40dp, `CircleShape`), индикатор выбора `NavigationBarItem` для этого пункта
+  отключён (`indicatorColor = Color.Transparent`), чтобы не дублировать круг.
+- `./gradlew assembleDebug` — успешно.
+
 ---
 
 ## Фаза 7 — Брендинг: иконка приложения и splash
@@ -227,6 +275,33 @@ dark theme работает (хотя бы базово, без доработк
   голой заливки `#2E7D32`.
 - Обновить `statusBarColor`/`navigationBarColor` под новую палитру и dark theme.
 
+**Сделано:**
+- Адаптивная иконка: вместо старого `drawable/ic_launcher_foreground.xml` (вектор
+  "белая капля") — растровый foreground (корзина с зелёным колосом/ростком,
+  палитра "Глина и Олива"), сгенерирован из PNG-макета и разложен по
+  `mipmap-{m,h,x,xx,xxx}hdpi/ic_launcher_foreground.png` (66% safe zone, прозрачные
+  поля). `mipmap-anydpi-v26/ic_launcher.xml` и `ic_launcher_round.xml` теперь
+  ссылаются на `@mipmap/ic_launcher_foreground`.
+- `drawable/ic_launcher_background.xml` — сплошная заливка `@color/ic_launcher_background`
+  (`#F5F7F2`, `AgroNeutralLight` — перекликается с фоном иконки), новый
+  [colors.xml](../app/src/main/res/values/colors.xml).
+- Splash через `androidx.core:core-splashscreen:1.0.1`: новый стиль
+  `Theme.AgroMarket.Starting` (`parent="Theme.SplashScreen"`,
+  `windowSplashScreenBackground=@color/splash_background` (`#F5F7F2`),
+  `windowSplashScreenAnimatedIcon=@mipmap/ic_launcher_foreground`,
+  `postSplashScreenTheme=Theme.AgroMarket`) вместо `Theme.AgroMarket.Splash` с
+  заливкой `#2E7D32`. Активити в манифесте использует `Theme.AgroMarket.Starting`.
+- [MainActivity.kt](../app/src/main/java/ru/agromarket/MainActivity.kt) —
+  `installSplashScreen()` до `super.onCreate`, кастомная анимация выхода
+  (`ObjectAnimator` fade-out, 250мс, `AccelerateInterpolator`).
+- `statusBarColor`/`navigationBarColor` переведены на токены из `colors.xml`:
+  light — `@color/status_bar` (`#63722E`, `AgroPrimary`) /
+  `@color/nav_bar` (`#F5F7F2`, `AgroNeutralLight`); добавлен
+  [values-night/themes.xml](../app/src/main/res/values-night/themes.xml) —
+  `@color/status_bar_dark`/`@color/nav_bar_dark` (`#11150B`, `AgroBackgroundDark`)
+  и тёмный вариант `windowSplashScreenBackground` (`@color/splash_background_dark`).
+- `./gradlew assembleDebug` — успешно.
+
 ---
 
 ## Фаза 8 — Полировка и QA
@@ -238,6 +313,55 @@ dark theme работает (хотя бы базово, без доработк
 - Прогнать `./gradlew lint` — заодно поправить deprecated `Icons.Default.ArrowBack` →
   `Icons.AutoMirrored.Filled.ArrowBack`, если ещё остались (отмечено в код-аудите).
 - Финальный визуальный проход по всем экранам в эмуляторе (light + dark).
+
+**Сделано:**
+- Dark theme: grep-аудит хардкод-цветов (`Color.Black`/`Color.White`/`Color(0x...)`,
+  `AgroGreen`/`AgroGray`/`AgroOrange` и т.п.) по всем экранам. Найден один
+  оставшийся случай — [LandsScreen.kt](../app/src/main/java/ru/agromarket/ui/lands/LandsScreen.kt)
+  (неподключённый экран): `TopAppBar` с `AgroGreen`/`AgroGray` заменён на общий
+  `AppTopBar`, цвета текста/иконки переведены на `colorScheme.onSurfaceVariant`.
+  Остальные хардкод-цвета (`AdCard`, `AdDetailScreen`, `AuthHero`, `StatusBadge`,
+  `Theme.kt`) — намеренные (оверлеи на фото, фиксированные брендовые градиенты,
+  цвета бейджей, определения самой палитры) и не требуют правок.
+- [Navigation.kt](../app/src/main/java/ru/agromarket/ui/navigation/Navigation.kt) —
+  `NavHost` получил `enterTransition`/`exitTransition`/`popEnterTransition`/
+  `popExitTransition`: переход вперёд — fade + slide-in справа (220мс), назад —
+  fade + slide-out вправо.
+- Анимация перестановки элементов списков (`Modifier.animateItemPlacement()`,
+  `@OptIn(ExperimentalFoundationApi::class)`) добавлена в
+  [FeedScreen.kt](../app/src/main/java/ru/agromarket/ui/feed/FeedScreen.kt) (карточки
+  объявлений), [FavoritesScreen.kt](../app/src/main/java/ru/agromarket/ui/favorites/FavoritesScreen.kt)
+  (строки избранного) и [ProfileScreen.kt](../app/src/main/java/ru/agromarket/ui/profile/ProfileScreen.kt)
+  (карточки "Мои объявления") — анимирует перестановку/удаление элементов
+  при смене данных, не появление новых карточек при пагинации.
+- `Icons.Default.ArrowBack` — не найдено, уже заменено на
+  `Icons.AutoMirrored.Filled.ArrowBack` в предыдущих фазах.
+- `./gradlew lint`: исправлена ошибка `PermissionImpliesUnsupportedChromeOsHardware` —
+  добавлен `<uses-feature android:name="android.hardware.camera" android:required="false" />`
+  в [AndroidManifest.xml](../app/src/main/AndroidManifest.xml). Оставшиеся
+  warning'и (`GradleDependency` x10, `MonochromeLauncherIcon` x2,
+  `DataExtractionRules`/`UnusedAttribute` — намеренно, см. комментарий в
+  `data_extraction_rules.xml`, `ObsoleteSdkInt`, `ObsoleteLintCustomCheck`) —
+  вне рамок этой фазы (требуют отдельных задач: апдейт зависимостей, новая
+  monochrome-иконка).
+- Финальный визуальный проход по всем экранам в эмуляторе (light + dark) —
+  **не выполнен**: эмулятор/adb недоступны в текущем окружении. Корректность
+  тёмной темы проверена статически (grep-аудит выше) и сборкой/линтом; реальный
+  визуальный прогон остаётся открытым пунктом.
+- `./gradlew assembleDebug` — успешно. `./gradlew lint` — успешно (BUILD
+  SUCCESSFUL, остались только warning'и, перечисленные выше).
+
+**Деплой:**
+- Debug APK (релизной подписи в проекте нет) залит на VPS `server-main`
+  (72.56.77.253) и раздаётся nginx'ом по прямой ссылке:
+  `https://agro.assaru.space/downloads/agromarket-debug.apk`.
+- На хосте добавлен `location /downloads/` (alias на
+  `/var/www/agromarket-downloads/`, `autoindex off`) в
+  `/etc/nginx/sites-enabled/agro.assaru.space`, конфиг провалидирован
+  (`nginx -t`) и применён (`systemctl reload nginx`). Бэкап исходного
+  конфига — `/root/nginx-backups/`.
+- `agroprompis.tw1.ru` для деплоя не используется — актуальный домен бэкенда
+  совпадает с `API_BASE_URL` (`agro.assaru.space`).
 
 ---
 
@@ -280,5 +404,5 @@ dark theme работает (хотя бы базово, без доработк
 
 ## Открытые вопросы (требуют решения)
 
-- Нужна ли новая иконка приложения от дизайнера или генерировать программно (vector) —
-  влияет на объём Фазы 7.
+- ~~Нужна ли новая иконка приложения от дизайнера или генерировать программно (vector)~~ —
+  решено в Фазе 7: иконка сгенерирована из готового PNG-макета (растровый foreground).

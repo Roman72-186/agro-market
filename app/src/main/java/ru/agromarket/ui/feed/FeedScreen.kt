@@ -1,5 +1,6 @@
 package ru.agromarket.ui.feed
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -92,7 +93,7 @@ class FeedViewModel @Inject constructor(
     fun clearSearch() { searchQuery = ""; selectedQuickCategory = null; currentPage = 1; loadFeed(refresh = true) }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, FlowPreview::class)
+@OptIn(ExperimentalMaterial3Api::class, FlowPreview::class, ExperimentalFoundationApi::class)
 @Composable
 fun FeedScreen(onAdClick: (String) -> Unit, onProfileClick: () -> Unit, viewModel: FeedViewModel = hiltViewModel()) {
 
@@ -169,7 +170,9 @@ fun FeedScreen(onAdClick: (String) -> Unit, onProfileClick: () -> Unit, viewMode
                 icon = Icons.Filled.Inventory2,
             )
             else -> LazyColumn(contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                items(viewModel.ads, key = { it.id }) { ad -> AdCard(ad = ad, onClick = { onAdClick(ad.id) }) }
+                items(viewModel.ads, key = { it.id }) { ad ->
+                    AdCard(ad = ad, onClick = { onAdClick(ad.id) }, modifier = Modifier.animateItemPlacement())
+                }
                 if (viewModel.currentPage < viewModel.totalPages) {
                     item {
                         Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(modifier = Modifier.size(32.dp)) }

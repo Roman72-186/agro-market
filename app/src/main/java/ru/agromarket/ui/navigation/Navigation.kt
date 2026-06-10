@@ -1,12 +1,23 @@
 package ru.agromarket.ui.navigation
 
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -62,13 +73,32 @@ fun MainNavigation(isLoggedIn: Boolean) {
                 NavigationBar {
                     bottomNavItems.forEach { item ->
                         NavigationBarItem(
-                            icon = { Icon(item.icon, contentDescription = item.label) },
+                            icon = {
+                                if (item is BottomNavItem.CreateAd) {
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(40.dp),
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(item.icon, contentDescription = item.label, tint = MaterialTheme.colorScheme.onPrimary)
+                                        }
+                                    }
+                                } else {
+                                    Icon(item.icon, contentDescription = item.label)
+                                }
+                            },
                             label = { Text(item.label) },
                             selected = currentRoute == item.route,
                             onClick = {
                                 if (currentRoute != item.route) {
                                     navController.navigate(item.route) { popUpTo(Screen.Feed.route) { saveState = true }; launchSingleTop = true; restoreState = true }
                                 }
+                            },
+                            colors = if (item is BottomNavItem.CreateAd) {
+                                NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent)
+                            } else {
+                                NavigationBarItemDefaults.colors()
                             }
                         )
                     }
@@ -76,7 +106,15 @@ fun MainNavigation(isLoggedIn: Boolean) {
             }
         }
     ) { innerPadding ->
-        NavHost(navController = navController, startDestination = if (isLoggedIn) Screen.Feed.route else Screen.Login.route, modifier = Modifier.padding(innerPadding)) {
+        NavHost(
+            navController = navController,
+            startDestination = if (isLoggedIn) Screen.Feed.route else Screen.Login.route,
+            modifier = Modifier.padding(innerPadding),
+            enterTransition = { fadeIn(tween(220)) + slideInHorizontally(tween(220)) { it / 5 } },
+            exitTransition = { fadeOut(tween(220)) },
+            popEnterTransition = { fadeIn(tween(220)) },
+            popExitTransition = { fadeOut(tween(220)) + slideOutHorizontally(tween(220)) { it / 5 } },
+        ) {
             composable(Screen.Login.route) {
                 LoginScreen(onLoginSuccess = { navController.navigate(Screen.Feed.route) { popUpTo(0) { inclusive = true } } }, onNavigateToRegister = { navController.navigate(Screen.Register.route) })
             }
