@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.AgroMarket" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">#2E7D32</item>
+        <item name="android:navigationBarColor">#FFFFFF</item>
+    </style>
+
+    <style name="Theme.AgroMarket.Splash" parent="Theme.AgroMarket">
+        <item name="android:windowBackground">#2E7D32</item>
+    </style>
+</resources>

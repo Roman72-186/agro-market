@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+   allowBackup="false" already disables cloud backup. These rules additionally block
+   device-to-device transfer on Android 12+ (allowBackup does not cover D2D there).
+   Auth tokens live in DataStore at files/datastore/auth_prefs.preferences_pb and must
+   never leave the device.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="file" path="datastore" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="file" path="datastore" />
+    </device-transfer>
+</data-extraction-rules>
