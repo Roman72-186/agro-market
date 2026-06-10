@@ -111,12 +111,33 @@ class AgroRepository @Inject constructor(
             } else {
                 val errorBody = response.errorBody()?.string()
                 val detail = try {
-                    com.google.gson.Gson().fromJson(errorBody, Map::class.java)?.get("detail")?.toString()
+                    parseErrorDetail(com.google.gson.Gson().fromJson(errorBody, Map::class.java)?.get("detail"))
                 } catch (_: Exception) { null }
                 ApiResult.Error(detail ?: "Ошибка сервера", response.code())
             }
         } catch (e: Exception) {
             ApiResult.Error(e.message ?: "Ошибка соединения")
         }
+    }
+
+    /**
+     * FastAPI/Pydantic validation errors (422) return `detail` as a list of
+     * `{loc, msg, type, input}` objects rather than a string, e.g.
+     * `[{"type": "enum", "loc": ["body", "type"], "msg": "Input should be 'sell'..."}]`.
+     * Turn that into a readable "field: message" string instead of a raw map dump.
+     */
+    private fun parseErrorDetail(detail: Any?): String? = when (detail) {
+        is String -> detail
+        is List<*> -> detail.mapNotNull { item ->
+            val map = item as? Map<*, *> ?: return@mapNotNull item?.toString()
+            val field = (map["loc"] as? List<*>)?.lastOrNull()?.toString()
+            val msg = map["msg"]?.toString()
+            when {
+                field != null && msg != null -> "$field: $msg"
+                msg != null -> msg
+                else -> map.toString()
+            }
+        }.joinToString("; ").ifBlank { null }
+        else -> detail?.toString()
     }
 }

@@ -79,6 +79,7 @@ class CreateAdViewModel @Inject constructor(
     var photoUris by mutableStateOf<List<Uri>>(emptyList())
     var isLoading by mutableStateOf(false)
     var error by mutableStateOf<String?>(null)
+    var geoError by mutableStateOf<String?>(null)
 
     init { loadData() }
 
@@ -137,12 +138,24 @@ class CreateAdViewModel @Inject constructor(
         // Reset dependent geo levels so a stale district/locality can't be submitted.
         selectedDistrictId = null; selectedDistrictName = ""; districts = emptyList()
         selectedLocalityId = null; selectedLocalityName = ""; localities = emptyList()
-        viewModelScope.launch { (repository.getDistricts(id) as? ApiResult.Success)?.let { districts = it.data } }
+        geoError = null
+        viewModelScope.launch {
+            when (val r = repository.getDistricts(id)) {
+                is ApiResult.Success -> districts = r.data
+                is ApiResult.Error -> geoError = "Не удалось загрузить районы: ${r.message}"
+            }
+        }
     }
     fun selectDistrict(id: Int, name: String) {
         selectedDistrictId = id; selectedDistrictName = name
         selectedLocalityId = null; selectedLocalityName = ""; localities = emptyList()
-        viewModelScope.launch { (repository.getLocalities(id) as? ApiResult.Success)?.let { localities = it.data } }
+        geoError = null
+        viewModelScope.launch {
+            when (val r = repository.getLocalities(id)) {
+                is ApiResult.Success -> localities = r.data
+                is ApiResult.Error -> geoError = "Не удалось загрузить населённые пункты: ${r.message}"
+            }
+        }
     }
     fun selectLocality(id: Int, name: String) { selectedLocalityId = id; selectedLocalityName = name }
 
@@ -412,6 +425,7 @@ fun CreateAdScreen(onSuccess: () -> Unit, onBack: () -> Unit, viewModel: CreateA
                             }
                             Text("${viewModel.photoUris.size} из 10 фото", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
+                        viewModel.geoError?.let { err -> item { ErrorBanner(message = err) } }
                         viewModel.error?.let { err -> item { ErrorBanner(message = err) } }
                     }
                     Spacer(modifier = Modifier.height(8.dp))

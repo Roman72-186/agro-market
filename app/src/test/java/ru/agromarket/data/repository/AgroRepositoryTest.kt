@@ -69,4 +69,18 @@ class AgroRepositoryTest {
         assertTrue(result is ApiResult.Error)
         assertEquals("boom", (result as ApiResult.Error).message)
     }
+
+    @Test
+    fun `validation error with detail list is parsed into a readable message`() = runTest {
+        val errorBody = """{"detail":[{"type":"enum","loc":["body","type"],"msg":"Input should be 'sell', 'service' or 'land'","input":"SELL"}]}"""
+            .toResponseBody("application/json".toMediaTypeOrNull())
+        coEvery { api.login(any()) } returns Response.error(422, errorBody)
+
+        val result = repository.login("user@mail.ru", "secret")
+
+        assertTrue(result is ApiResult.Error)
+        result as ApiResult.Error
+        assertEquals("type: Input should be 'sell', 'service' or 'land'", result.message)
+        assertEquals(422, result.code)
+    }
 }

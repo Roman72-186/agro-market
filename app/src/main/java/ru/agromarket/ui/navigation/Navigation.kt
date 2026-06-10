@@ -54,7 +54,7 @@ fun MainNavigation(isLoggedIn: Boolean) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     val bottomNavItems = listOf(BottomNavItem.Feed, BottomNavItem.Favorites, BottomNavItem.CreateAd)
-    val showBottomBar = currentRoute in bottomNavItems.map { it.route } || currentRoute == Screen.Profile.route
+    val showBottomBar = currentRoute in bottomNavItems.map { it.route }
 
     // React to session loss at runtime (e.g. TokenAuthenticator wiped tokens after a failed
     // refresh): kick the user back to login instead of leaving them on a dead screen.
@@ -138,7 +138,7 @@ fun MainNavigation(isLoggedIn: Boolean) {
                 FavoritesScreen(onAdClick = { adId -> navController.navigate(Screen.AdDetail.createRoute(adId)) })
             }
             composable(Screen.Profile.route) {
-                ProfileScreen(onLogout = { navController.navigate(Screen.Login.route) { popUpTo(0) { inclusive = true } } }, onMyAds = { adId -> navController.navigate(Screen.AdDetail.createRoute(adId)) })
+                ProfileScreen(onLogout = { navController.navigate(Screen.Login.route) { popUpTo(0) { inclusive = true } } }, onMyAds = { adId -> navController.navigate(Screen.AdDetail.createRoute(adId)) }, onBack = { navController.popBackStack() })
             }
         }
     }
