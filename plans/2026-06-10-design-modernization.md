@@ -135,6 +135,24 @@ dark theme работает (хотя бы базово, без доработк
 - Поисковая строка и фильтры типа — обновить под новые `Shapes`/цвета.
 - Список объявлений: проверить отступы/плотность с новым крупным `AdCard`.
 
+**Сделано:**
+- `TopAppBar` заменён на общий [AppTopBar.kt](../app/src/main/java/ru/agromarket/ui/components/AppTopBar.kt)
+  (заголовок "🌾 АгроМаркет" + кнопка профиля в `actions`).
+- Старая локальная функция `AdCard` (Row с фото 100dp) удалена, список объявлений рендерится
+  новым [AdCard.kt](../app/src/main/java/ru/agromarket/ui/components/AdCard.kt) из Фазы 1
+  (фото 16:9, бейдж типа, цена-оверлей).
+- Полноэкранная загрузка (`CircularProgressIndicator` по центру) заменена на
+  `FeedLoadingState()` (скелетоны карточек), пустой список — на `EmptyState` с иконкой
+  `Inventory2` и подсказкой "Попробуйте изменить фильтры или поисковый запрос".
+- Чипы быстрых категорий (`QUICK_CATEGORIES`) заменены на новый `QuickCategoryTile` —
+  плитка `Surface` (иконка из `categoryIconFor` + подпись), подсветка `primaryContainer`
+  при выборе вместо `FilterChip` с эмодзи в тексте. Поле `icon` (emoji) в `QuickCategory`
+  оставлено — используется в Фазе 5 (`CreateAdScreen`).
+- Поисковое поле — `shape = MaterialTheme.shapes.medium` (было `RoundedCornerShape(12.dp)`
+  напрямую); подкатегории (`SuggestionChip`) — тоже `shapes.medium`. Текст фильтров типа
+  (`FilterChip`) и поиска переведён с хардкода `fontSize` на `MaterialTheme.typography.*`.
+- `./gradlew assembleDebug` — успешно.
+
 ---
 
 ## Фаза 4 — Ad Detail
@@ -147,6 +165,27 @@ dark theme работает (хотя бы базово, без доработк
 - Карточка "Контакты" — обновить под новые `Shapes`/цвета (`AgroGreenBg` → токен).
 - Кнопка "Запросить контакты" — привести к единому стилю кнопок (см. Фазу 1, если будет
   отдельный `PrimaryButton`).
+
+**Сделано:**
+- `TopAppBar` заменён на общий `AppTopBar` (заголовок "Объявление", кнопка "назад", сердечко
+  избранного в `actions`, тон сердечка — `AgroRed`/`onPrimary`).
+- Галерея фото переведена с `LazyRow` (квадратные фото, скролл) на `HorizontalPager` (4:3,
+  на всю ширину, edge-to-edge) со счётчиком "тек./всего" — `Surface` с полупрозрачным чёрным
+  фоном поверх изображения, показывается только при `photos.size > 1`. Если фото нет —
+  плейсхолдер `Icons.Outlined.Image` на `surfaceVariant` (как в `AdCard`).
+- Бейдж типа объявления — через `StatusBadge`/`adTypeBadge` из Фазы 1 вместо ручной
+  `Surface` с `AgroGreen.copy(alpha = 0.1f)`.
+- Цена — `headlineMedium` шрифтом `JetBrainsMono` (как в `AdCard`), цвет
+  `colorScheme.primary` вместо `AgroGreen`.
+- Локация/категория — иконки и текст на `colorScheme.onSurfaceVariant` вместо `AgroGray`.
+- Карточка "Контакты" — `colorScheme.primaryContainer`/`onPrimaryContainer` вместо
+  `AgroGreenBg`/хардкод-зелёного, `shapes.large`.
+- Сообщение после "Запросить контакты": ошибка — общий `ErrorBanner`, успех — аналогичный
+  баннер на `primaryContainer` с иконкой `CheckCircle` (новое поле `contactError` в
+  `AdDetailViewModel`), вместо голого `Text`.
+- Кнопка "Запросить контакты" — `height(52.dp)`, `shape = shapes.medium`, текст
+  `titleMedium` (как в Auth-экранах из Фазы 2).
+- `./gradlew assembleDebug` — успешно.
 
 ---
 
