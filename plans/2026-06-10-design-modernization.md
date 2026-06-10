@@ -62,6 +62,34 @@ dark theme работает (хотя бы базово, без доработк
 **Результат:** новые компоненты готовы и покрыты превью (`@Preview`), но ещё не подключены
 везде — подключение по экранам в фазах 3-6.
 
+**Сделано:**
+- [StatusBadge.kt](../app/src/main/java/ru/agromarket/ui/components/StatusBadge.kt) —
+  `BadgeTone` (`SUCCESS`/`WARNING`/`DANGER`/`INFO`/`NEUTRAL`) на токенах `AgroSuccess`/`AgroWarning`/
+  `AgroDanger`/`AgroInfo` из Фазы 0, плюс хелперы `adTypeBadge(type)` и `adStatusBadge(status)`
+  для единых подписей/цветов типа и статуса объявления.
+- [EmptyState.kt](../app/src/main/java/ru/agromarket/ui/components/EmptyState.kt) —
+  иконка в цветном круге (`primaryContainer`) + заголовок + опциональные подпись и `action`,
+  заменяет разрозненные блоки "Нет избранных"/"Объявлений пока нет".
+- [LoadingState.kt](../app/src/main/java/ru/agromarket/ui/components/LoadingState.kt) —
+  `shimmerBrush()` (анимированный градиент по `surfaceVariant`), `AdCardSkeleton()` (плейсхолдер
+  по форме `AdCard`) и `FeedLoadingState()` — список скелетонов вместо центрального
+  `CircularProgressIndicator`.
+- [AppTopBar.kt](../app/src/main/java/ru/agromarket/ui/components/AppTopBar.kt) —
+  `CenterAlignedTopAppBar` на `colorScheme.primary`/`onPrimary`, опциональная кнопка "назад" и
+  слот `actions` — единая шапка для Feed/Favorites/Profile/AdDetail/CreateAd.
+- [CategoryIcon.kt](../app/src/main/java/ru/agromarket/ui/components/CategoryIcon.kt) —
+  `categoryIconFor(categoryName)` маппит названия категорий (`Техника`, `Запчасти`, `Семена`,
+  `Удобрения`, `Корма`, `Животные`, `Земля`, `Оборудование`, `Прочее`) на Material Symbols
+  Outlined (`Agriculture`/`Build`/`Grass`/`Science`/`Grain`/`Pets`/`Terrain`/`Construction`/
+  `Inventory2`, fallback `Category`), плюс `CategoryIcon` — круглый бейдж на
+  `secondaryContainer`.
+- [AdCard.kt](../app/src/main/java/ru/agromarket/ui/components/AdCard.kt) — новый дизайн карточки
+  объявления: фото на всю ширину (16:9, плейсхолдер при отсутствии `photoUrl`), бейдж типа
+  (и опционально статуса) поверх фото через `StatusBadge`/`adTypeBadge`/`adStatusBadge`, кнопка
+  "избранное" (опциональная, `onFavoriteClick`), цена — overlay с градиентным скримом и
+  шрифтом `JetBrainsMono`, заголовок и регион под фото.
+- `./gradlew assembleDebug` — успешно.
+
 ---
 
 ## Фаза 2 — Auth (Login / Register)
@@ -203,7 +231,9 @@ dark theme работает (хотя бы базово, без доработк
 - **Shapes**: единая шкала скруглений в [Shape.kt](../app/src/main/java/ru/agromarket/ui/theme/Shape.kt)
   (`extraSmall=4dp` … `extraLarge=24dp`, по `--radius-screen`)
 - **Typography**: заведена в [Type.kt](../app/src/main/java/ru/agromarket/ui/theme/Type.kt),
-  стандартная M3-шкала на `FontFamily.Default` — готова к замене шрифта одной строкой
+  стандартная M3-шкала на брендовых шрифтах [Font.kt](../app/src/main/java/ru/agromarket/ui/theme/Font.kt) —
+  `PlusJakartaSans` (вариативный `.ttf`, `res/font/plus_jakarta_sans.ttf`) для всей шкалы и
+  `JetBrainsMono` (`res/font/jetbrains_mono.ttf`) для цены в `AdCard`
 - **Icon-set**: остаёмся на Material Symbols Outlined — `material-icons-extended` уже подключена
   (build.gradle.kts:60), сторонний icon-set не нужен
 
@@ -211,10 +241,5 @@ dark theme работает (хотя бы базово, без доработк
 
 ## Открытые вопросы (требуют решения)
 
-- **Шрифты бренда** — присланы токены `--agro-font-sans: 'Plus Jakarta Sans'` и
-  `--agro-font-mono: 'JetBrains Mono'`, но файлов шрифтов в проекте нет. Нужно решить:
-  бандлить статические `.ttf` в `res/font/` (офлайн, +вес APK) или подключить Downloadable
-  Fonts API (`androidx.compose.ui.text.googlefonts`, без файлов, но нужен Google Play Services
-  и сертификат провайдера). До решения `Type.kt` использует `FontFamily.Default`.
 - Нужна ли новая иконка приложения от дизайнера или генерировать программно (vector) —
   влияет на объём Фазы 7.
