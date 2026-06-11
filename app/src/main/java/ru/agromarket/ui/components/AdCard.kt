@@ -179,7 +179,7 @@ private fun AdCardPreview() {
         AdCard(
             ad = AdListResponse(
                 id = "1",
-                type = "sell",
+                type = "sale",
                 categoryId = 1,
                 categoryName = "Техника",
                 regionId = 1,

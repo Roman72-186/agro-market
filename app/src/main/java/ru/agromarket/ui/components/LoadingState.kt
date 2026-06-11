@@ -73,6 +73,21 @@ fun FeedLoadingState(modifier: Modifier = Modifier, count: Int = 4) {
     }
 }
 
+/** Skeleton placeholder shaped like [LandCard]: a tall photo block with rounded corners. */
+@Composable
+fun LandCardSkeleton(modifier: Modifier = Modifier) {
+    val brush = shimmerBrush()
+    Box(modifier = modifier.fillMaxWidth().aspectRatio(4f / 3f).background(brush, RoundedCornerShape(20.dp)))
+}
+
+/** List of [LandCardSkeleton] shown while land listings are loading. */
+@Composable
+fun LandsLoadingState(modifier: Modifier = Modifier, count: Int = 3) {
+    LazyColumn(modifier = modifier, contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+        items(count) { LandCardSkeleton() }
+    }
+}
+
 @Preview(showBackground = true)
 @Composable
 private fun FeedLoadingStatePreview() {

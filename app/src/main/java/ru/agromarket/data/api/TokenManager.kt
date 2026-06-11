@@ -17,11 +17,9 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 
 @Singleton
 class TokenManager @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val crypto: CryptoManager,
 ) {
-    // Tokens are encrypted at rest with an AndroidKeyStore key; DataStore only ever sees ciphertext.
-    private val crypto = CryptoManager()
-
     companion object {
         private val ACCESS_TOKEN = stringPreferencesKey("access_token")
         private val REFRESH_TOKEN = stringPreferencesKey("refresh_token")

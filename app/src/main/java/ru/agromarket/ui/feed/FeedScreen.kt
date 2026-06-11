@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.Terrain
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,6 +26,7 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import ru.agromarket.data.model.AdListResponse
+import ru.agromarket.data.model.LAND_CATEGORY_ID
 import ru.agromarket.data.repository.AgroRepository
 import ru.agromarket.data.repository.ApiResult
 import ru.agromarket.ui.components.AdCard
@@ -60,6 +62,7 @@ class FeedViewModel @Inject constructor(
     var currentPage by mutableStateOf(1)
     var totalPages by mutableStateOf(1)
     var selectedType by mutableStateOf<String?>(null)
+    var selectedCategoryId by mutableStateOf<Int?>(null)
     var selectedQuickCategory by mutableStateOf<QuickCategory?>(null)
 
     init { loadFeed() }
@@ -69,7 +72,7 @@ class FeedViewModel @Inject constructor(
         isLoading = true
         viewModelScope.launch {
             error = null
-            when (val result = repository.getFeed(page = currentPage, type = selectedType, search = searchQuery.ifBlank { null })) {
+            when (val result = repository.getFeed(page = currentPage, type = selectedType, categoryId = selectedCategoryId, search = searchQuery.ifBlank { null })) {
                 is ApiResult.Success -> {
                     ads = if (refresh || currentPage == 1) result.data.items else ads + result.data.items
                     totalPages = result.data.totalPages
@@ -85,7 +88,8 @@ class FeedViewModel @Inject constructor(
     fun onSearchInput(query: String) { searchQuery = query; selectedQuickCategory = null }
     // Triggered after debounce (or immediately for explicit actions like subcategory taps).
     fun runSearch() { currentPage = 1; loadFeed(refresh = true) }
-    fun filterByType(type: String?) { selectedType = type; currentPage = 1; loadFeed(refresh = true) }
+    fun filterByType(type: String?) { selectedType = type; selectedCategoryId = null; currentPage = 1; loadFeed(refresh = true) }
+    fun filterByCategory(categoryId: Int?) { selectedCategoryId = categoryId; selectedType = null; currentPage = 1; loadFeed(refresh = true) }
     fun selectQuickCategory(cat: QuickCategory?) {
         selectedQuickCategory = if (selectedQuickCategory == cat) null else cat
     }
@@ -95,7 +99,7 @@ class FeedViewModel @Inject constructor(
 
 @OptIn(ExperimentalMaterial3Api::class, FlowPreview::class, ExperimentalFoundationApi::class)
 @Composable
-fun FeedScreen(onAdClick: (String) -> Unit, onProfileClick: () -> Unit, viewModel: FeedViewModel = hiltViewModel()) {
+fun FeedScreen(onAdClick: (String) -> Unit, onProfileClick: () -> Unit, onLandsClick: () -> Unit, viewModel: FeedViewModel = hiltViewModel()) {
 
     // Debounce text input: fire the network search ~400ms after the user stops typing.
     LaunchedEffect(Unit) {
@@ -109,6 +113,9 @@ fun FeedScreen(onAdClick: (String) -> Unit, onProfileClick: () -> Unit, viewMode
         AppTopBar(
             title = "🌾 АгроМаркет",
             actions = {
+                IconButton(onClick = onLandsClick) {
+                    Icon(Icons.Outlined.Terrain, "Земли СХ назначения", modifier = Modifier.size(26.dp))
+                }
                 IconButton(onClick = onProfileClick) {
                     Icon(Icons.Default.AccountCircle, "Профиль", modifier = Modifier.size(28.dp))
                 }
@@ -117,10 +124,10 @@ fun FeedScreen(onAdClick: (String) -> Unit, onProfileClick: () -> Unit, viewMode
 
         // Type filters: Все | Продажа | Агроуслуги | Земли
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(selected = viewModel.selectedType == null, onClick = { viewModel.filterByType(null) }, label = { Text("Все", style = MaterialTheme.typography.labelLarge) })
-            FilterChip(selected = viewModel.selectedType == "sell", onClick = { viewModel.filterByType(if (viewModel.selectedType == "sell") null else "sell") }, label = { Text("Продажа", style = MaterialTheme.typography.labelLarge) })
+            FilterChip(selected = viewModel.selectedType == null && viewModel.selectedCategoryId == null, onClick = { viewModel.filterByType(null) }, label = { Text("Все", style = MaterialTheme.typography.labelLarge) })
+            FilterChip(selected = viewModel.selectedType == "sale", onClick = { viewModel.filterByType(if (viewModel.selectedType == "sale") null else "sale") }, label = { Text("Продажа", style = MaterialTheme.typography.labelLarge) })
             FilterChip(selected = viewModel.selectedType == "service", onClick = { viewModel.filterByType(if (viewModel.selectedType == "service") null else "service") }, label = { Text("Агроуслуги", style = MaterialTheme.typography.labelLarge) })
-            FilterChip(selected = viewModel.selectedType == "land", onClick = { viewModel.filterByType(if (viewModel.selectedType == "land") null else "land") }, label = { Text("Земли", style = MaterialTheme.typography.labelLarge) })
+            FilterChip(selected = viewModel.selectedCategoryId == LAND_CATEGORY_ID, onClick = { viewModel.filterByCategory(if (viewModel.selectedCategoryId == LAND_CATEGORY_ID) null else LAND_CATEGORY_ID) }, label = { Text("Земли", style = MaterialTheme.typography.labelLarge) })
         }
 
         // Search bar - always visible

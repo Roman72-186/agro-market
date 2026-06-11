@@ -1,123 +1,112 @@
 # Аудит кода AgroMarket
 
-Дата: 2026-06-09
+Дата: 2026-06-11 (обновление аудита от 2026-06-09 после коммитов `a9eebfa`…`d3db044`)
 Объём: весь модуль `:app` (Kotlin · Jetpack Compose · Hilt · Retrofit/OkHttp · DataStore).
 
 Архитектура чистая: `data / di / ui`, репозиторий с `ApiResult`, Hilt, ViewModel в файле экрана.
-База здоровая. Проблемы — в деталях ниже, по убыванию важности.
+С прошлого аудита закрыты все критичные и заметные пункты, плюс выполнена дизайн-модернизация
+(см. [plans/2026-06-10-design-modernization.md](plans/2026-06-10-design-modernization.md)).
+Ниже — что осталось открытым и новые наблюдения.
 
 ---
 
-## 🔴 Критичное (ломает работу)
+## ✅ Закрыто с прошлого аудита (2026-06-09)
 
-### 1. ProGuard не покрывает `AdMyListResponse` → «Мои объявления» сломаются в release
-Класс объявлен в `app/src/main/java/ru/agromarket/data/api/AgroMarketApi.kt:145` в пакете
-`ru.agromarket.data.api`, а правило хранит только модели:
-```
--keep class ru.agromarket.data.model.** { *; }
-```
-В release включён `isMinifyEnabled = true`. Поля без `@SerializedName` (`id`, `type`, `title`,
-`status`) будут переименованы R8 → Gson вернёт их `null` → краш/пустой экран профиля.
-В debug не воспроизводится, поэтому легко уехать в прод.
-
-**Фикс:** расширить правило до `ru.agromarket.data.**` (или перенести класс в `data.model`).
-Заодно добавить стандартные keep-правила для Hilt/Retrofit — текущий `proguard-rules.pro` их не
-содержит вообще.
-
-### 2. Двойная отправка объявления на модерацию
-`app/src/main/java/ru/agromarket/ui/create/CreateAdScreen.kt:119-122`
-```kotlin
-when (repository.submitAd(adId)) {
-    is ApiResult.Success -> onSuccess()
-    is ApiResult.Error -> error = (repository.submitAd(adId) as? ApiResult.Error)?.message
-}
-```
-`submitAd` вызывается для `when`, а в ветке ошибки — ещё раз. Два POST-запроса на submit.
-Надо сохранить результат в `val`:
-```kotlin
-when (val res = repository.submitAd(adId)) {
-    is ApiResult.Success -> onSuccess()
-    is ApiResult.Error -> error = res.message
-}
-```
+| Было | Фикс |
+|---|---|
+| ProGuard не покрывал `AdMyListResponse` (release-краш «Моих объявлений») | `proguard-rules.pro`: `-keep class ru.agromarket.data.** { *; }` + правила для Hilt/Retrofit/Gson |
+| Двойной POST `submitAd` при ошибке | `when (val submitResult = repository.submitAd(adId))` — один вызов, результат сохранён в `val` |
+| Поиск дёргал API на каждой букве | `snapshotFlow { searchQuery }` + `debounce(400ms)` в `FeedScreen.kt` |
+| `isFavorite` всегда стартовал с `false` | при открытии сверяется с `getFavorites()`, optimistic toggle с откатом при ошибке |
+| Категория угадывалась по подстроке (`APP_CATEGORIES`) | `CreateAdScreen` строит дерево из `getCategories()`, локальный хардкод-список удалён |
+| Район/населённый пункт не выбирались | `getDistricts`/`getLocalities` подключены в шаге формы мастера |
+| `allowBackup="true"` | `false` |
+| Токены в DataStore без шифрования | новый `CryptoManager` (AES-256/GCM, ключ в AndroidKeystore), `TokenManager` хранит только шифротекст, `decrypt()` возвращает `null` для legacy/повреждённых данных |
+| Нет авто-refresh при 401 | новый `TokenAuthenticator`: refresh через `auth/refresh`, синхронизация конкурентных 401 (`synchronized` + повторная проверка токена), лимит попыток, очистка токенов и логаут при невалидном refresh |
+| `provideTokenManager` в `AppModule` | убран — Hilt создаёт `TokenManager` сам (`@Singleton @Inject constructor`) |
+| `response.body()!!` мог упасть на пустом теле | `safeCall` теперь возвращает `ApiResult.Error("Пустой ответ сервера", ...)` при `body() == null` |
+| `Icons.Default.ArrowBack` (deprecated) | заменено на `Icons.AutoMirrored.Filled.ArrowBack` |
+| Дизайн: дефолтный Material3-шаблон, эмодзи-иконки, разнобой шапок/карточек | фазы 0–8 завершены: палитра «Глина и Олива», `AdCard`/`StatusBadge`/`EmptyState`/`AppTopBar`/`AuthHero`/`ErrorBanner`/`CategoryIcon`, dark theme, брендинг иконки/сплэша, анимации навигации, `./gradlew lint` чист |
 
 ---
 
-## 🟠 Заметные баги
+## 🟠 Осталось открытым
 
-### 3. Поиск дёргает API на каждой букве
-`app/src/main/java/ru/agromarket/ui/feed/FeedScreen.kt:112`
-`onValueChange = { viewModel.search(it) }` → каждый символ запускает полный сетевой
-`loadFeed(refresh)`. Нет debounce, мигание списка, нагрузка на сервер.
-Нужно отделить ввод текста от запроса (debounce ~400 мс через `snapshotFlow`/`LaunchedEffect`),
-а не звать `search()` в `onValueChange`.
+### 1. ~~Refresh-логика и шифрование токенов не покрыты тестами~~ — закрыто 2026-06-11
+Добавлены `TokenAuthenticatorTest` (7 тестов: успешный/неудачный refresh, исключение из
+`api.refreshToken`, отсутствие refresh-токена, дедупликация конкурентных 401, лимит попыток,
+исключение `/auth/`) и `TokenManagerTest` (5 тестов: round-trip, Flow при пустом хранилище,
+`isLoggedIn`, `decrypt() == null`, `clear()`).
 
-### 4. `isFavorite` всегда стартует с `false`
-`app/src/main/java/ru/agromarket/ui/ad/AdDetailScreen.kt:40,54`
-При открытии уже добавленного в избранное объявления показывается пустое сердце. Нажатие
-повторно шлёт `addFavorite`. Нет синхронизации с реальным состоянием (ни поля в
-`AdDetailResponse`, ни сверки с `getFavorites()`).
+`CryptoManager` использует реальный `AndroidKeyStore`-ключ (AES/GCM), который Robolectric не
+может полноценно эмулировать — спайк `KeyGenerator.getInstance(AES, "AndroidKeyStore")` падает с
+`NoSuchAlgorithmException`. Поэтому:
+- `TokenManager` теперь получает `CryptoManager` через конструктор (DI, см. пункт ниже в
+  «Мелкие») — в `TokenManagerTest` он замокан через MockK, DataStore работает на реальном
+  Robolectric `Context` (`app/src/test`).
+- `CryptoManagerTest` (5 тестов: round-trip, decrypt на мусорном/пустом/слишком коротком Base64,
+  decrypt после ротации ключа) лежит в `app/src/androidTest` и требует эмулятор/устройство:
+  `./gradlew connectedDebugAndroidTest`. Не запускался в этой сессии (нет эмулятора), но
+  компилируется (`assembleDebugAndroidTest` зелёный).
+- В `app/build.gradle.kts` добавлены `org.robolectric:robolectric:4.13` и `androidx.test:core:1.5.0`
+  (testImplementation) + `testOptions.unitTests.isIncludeAndroidResources/isReturnDefaultValues`.
 
-### 5. Категория угадывается по подстроке, иначе — первая попавшаяся
-`app/src/main/java/ru/agromarket/ui/create/CreateAdScreen.kt:95-96`
-```kotlin
-selectedCategoryId = allCats.firstOrNull { it.name.contains(sub, ignoreCase = true) }?.id
-    ?: allCats.firstOrNull()?.id
-```
-Локальные хардкод-списки (`APP_CATEGORIES`) не связаны с серверными категориями. Если совпадения
-нет — объявление молча уходит в произвольную категорию. Нужно строить шаги категорий из ответа
-`getCategories()`, а не из захардкоженных списков.
+### 2. Мёртвый функционал в UI
+`forgotPassword`, `resetPassword`, `changePassword` реализованы в `AgroMarketApi`/`AgroRepository`,
+но не вызываются из UI — на `LoginScreen` нет «Забыли пароль?», в `ProfileScreen` нет смены
+пароля. Либо добавить экраны/действия, либо (если не нужно сейчас) явно отметить как backlog,
+чтобы не путать при следующем аудите.
 
-### 6. Район и населённый пункт нигде не выбираются
-В `AdCreateRequest` есть `districtId`/`localityId`, эндпоинты `getDistricts/getLocalities/searchLocality`
-реализованы, но UI собирает только регион. Фича недоделана.
+### 3. ~~`LandsScreen` не подключён~~ — закрыто 2026-06-11
+Экран реализован (список объявлений категории "Земельные участки" через
+`LandsViewModel`/`AgroRepository.getFeed(categoryId = LAND_CATEGORY_ID)`, карточки `LandCard` в
+стиле референса с фото, регионом и ценой) и зарегистрирован в `Navigation.kt` как
+`Screen.Lands`. Точка входа — иконка "Земли" в `AppTopBar` на `FeedScreen`.
 
----
+### 4. ~~Несовпадение значений `type` между приложением и `GET /feed` бэкенда~~ — закрыто 2026-06-11
+Сверено с актуальной OpenAPI-схемой бэкенда (`https://agro.assaru.space/openapi.json`):
+`AdType = "sale" | "rent" | "service"` — единый enum и для `AdCreateRequest.type`, и для фильтра
+`GET /ads/`. Значения `"sell"` и `"land"` в бэкенде не существуют вовсе — `"land"` никогда не было
+валидным `type`, это категория ("Земельные участки", `category_id = 56`, подтверждено через
+`GET /categories/`).
 
-## 🟡 Безопасность / конфиг
+Бага в бэкенде нет — он самосогласован. Поправлено приложение:
+- `FeedScreen` фильтр "Продажа" → `type = "sale"` (было `"sell"`).
+- "Земли" — фильтр по `categoryId = LAND_CATEGORY_ID` (было `type = "land"`).
+- `CreateAdScreen`: шаг "Земли СХ назначения" маппится на `type = "sale"` +
+  категория "Земельные участки" (`selectType("land")` → `type = "sale"`, авто-выбор категории 56).
+- `StatusBadge.adTypeBadge` и `LandsScreen`/`LandCard` используют `"sale"/"rent"/"service"`.
 
-### 7. `allowBackup="true"`
-`app/src/main/AndroidManifest.xml:12`
-Auth-токены лежат в DataStore (`auth_prefs`) и попадают в Android auto-backup → их можно вытащить
-из бэкапа. Для маркетплейса с учётками поставить `allowBackup="false"` либо исключить `auth_prefs`
-через `fullBackupContent`/`dataExtractionRules`.
-
-### 8. Токены хранятся в открытом виде
-Обычный `DataStore Preferences`, без шифрования. Желательно EncryptedSharedPreferences /
-шифрованный слой.
-
-### 9. Нет авто-refresh при 401
-(Отмечено и в `CLAUDE.md`.) `auth/refresh` есть в API, но `AuthInterceptor` токен не перевыпускает
-и не разлогинивает. Истёкшая сессия = поток ошибок без выхода на логин. Самый крупный
-архитектурный пробел в auth.
-
----
-
-## 🟢 Качество / починить заодно
-
-- **`runBlocking` в интерсепторе** (`AuthInterceptor.kt:21`) — блокирует OkHttp-поток и читает весь
-  DataStore на каждый запрос. Лучше держать токен в `@Volatile`-кэше, обновляемом из flow.
-- **`uriToFile`** (`utils/FileUtils.kt`) — копирует фото в кэш без сжатия, всегда имя `.jpg`, без
-  валидации размера/типа, кэш не чистится. Большие фото = тяжёлые загрузки и распухание `cacheDir`.
-- **Тихое проглатывание ошибок** в `ProfileViewModel.load()` (`ProfileScreen.kt:61,65`) — пустые
-  `is ApiResult.Error -> {}`. Профиль не загрузился → пустой экран без сообщения.
-- **Мёртвый/недоступный функционал:** `forgotPassword`, `resetPassword`, `changePassword`,
-  `refreshToken`, `getSubcategories`, `getLocalities` реализованы в API/репозитории, но не
-  вызываются из UI. «Забыли пароль?» с экрана логина недоступен.
-- **Дублирование категорий:** `QUICK_CATEGORIES` (Feed) и `APP_CATEGORIES` (Create) — два
-  расходящихся хардкод-списка.
-- **`response.body()!!`** (`AgroRepository.kt:107`) — упадёт на пустом теле (например 204), ошибка
-  превратится в маскирующее «Ошибка соединения».
-- **`provideTokenManager`** (`di/AppModule.kt:24`) лишний — `TokenManager` уже
-  `@Singleton @Inject constructor`, Hilt создаст сам.
-- **`Icons.Default.ArrowBack`** — deprecated, нужен `Icons.AutoMirrored.Filled.ArrowBack`
-  (RTL + lint).
-- **Нет тестов и нет Gradle wrapper** — отмечено в `CLAUDE.md`; для CI/воспроизводимости стоит
-  добавить.
+`GET /ads/?type=sale` и `GET /ads/?category_id=56` отдают `200 {"items": [], "total": 0, ...}`
+(БД пуста на момент проверки) — запросы больше не возвращают 400. Не проверено вживую с реальными
+объявлениями (нет данных в БД), только что запросы валидны.
 
 ---
 
-## Что чинить в первую очередь
-1. ProGuard (#1) и двойной submit (#2) — иначе release-баги.
-2. Debounce поиска (#3) — бьёт по серверу прямо сейчас.
-3. `allowBackup` / refresh-токен (#7, #9) — безопасность сессий.
+## 🟡 Мелкие/на усмотрение
+
+- **`runBlocking` в `AuthInterceptor` и `TokenAuthenticator`** — оставлено сознательно
+  (с комментариями в коде про синхронизацию конкурентных refresh), но по-прежнему блокирует
+  OkHttp-поток на каждый запрос и на каждый refresh. Если профилирование покажет проблему —
+  кандидат на `@Volatile`-кэш токена, обновляемый из `Flow`.
+- ~~**`TokenManager` создаёт `CryptoManager()` напрямую**~~ — закрыто 2026-06-11:
+  `CryptoManager` теперь приходит через конструктор (`@Inject`), Hilt связывает автоматически
+  (оба класса `@Singleton @Inject constructor`, без отдельного модуля). Это и сделало
+  `TokenManagerTest` возможным — `CryptoManager` в тесте замокан через MockK.
+- **`FileUtils.uriToFile`** — без сжатия/ресайза фото (осознанно отложено до пасса с
+  `ExifInterface`-поворотом, см. комментарий в коде); сейчас только защита от роста `cacheDir`
+  (чистка файлов `upload_*` старше часа).
+- **`CreateAdScreen.kt` — 441 строка**, самый крупный файл в проекте (мастер из 3-4 шагов в одном
+  файле). При следующих доработках мастера стоит подумать о разбиении по шагам.
+- **`QUICK_CATEGORIES` в `FeedScreen.kt`** — отдельный curated-список для быстрых фильтров на
+  главном экране; в отличие от прежнего `APP_CATEGORIES` не дублирует логику выбора категории при
+  создании объявления (та теперь полностью на серверных данных), так что дублирования смысла
+  больше нет — но стоит иметь в виду при изменении набора категорий на сервере.
+
+---
+
+## Что делать в первую очередь
+1. ~~Тесты на `TokenAuthenticator`/`CryptoManager`/`TokenManager` (#1)~~ — закрыто 2026-06-11.
+2. ~~Несовпадение `type` между приложением и `GET /feed` (#4)~~ — закрыто 2026-06-11.
+3. Решить судьбу «забыли пароль» / смены пароля (#2) — либо в UI, либо явный backlog-тикет.
+4. Остальное — низкий приоритет, по мере доработок соответствующих экранов.

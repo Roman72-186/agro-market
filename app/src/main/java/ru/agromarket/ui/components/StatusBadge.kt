@@ -41,11 +41,11 @@ fun StatusBadge(text: String, tone: BadgeTone, modifier: Modifier = Modifier) {
     }
 }
 
-/** Label + tone for an ad type (`sell`/`service`/`land`). */
+/** Label + tone for an ad type (`sale`/`rent`/`service`). */
 fun adTypeBadge(type: String): Pair<String, BadgeTone> = when (type) {
-    "sell" -> "Продажа" to BadgeTone.SUCCESS
+    "sale" -> "Продажа" to BadgeTone.SUCCESS
+    "rent" -> "Аренда" to BadgeTone.INFO
     "service" -> "Агроуслуги" to BadgeTone.WARNING
-    "land" -> "Земля" to BadgeTone.INFO
     else -> type to BadgeTone.NEUTRAL
 }
 

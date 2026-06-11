@@ -30,6 +30,7 @@ import ru.agromarket.ui.feed.FeedScreen
 import ru.agromarket.ui.ad.AdDetailScreen
 import ru.agromarket.ui.create.CreateAdScreen
 import ru.agromarket.ui.favorites.FavoritesScreen
+import ru.agromarket.ui.lands.LandsScreen
 import ru.agromarket.ui.profile.ProfileScreen
 
 sealed class Screen(val route: String) {
@@ -40,6 +41,7 @@ sealed class Screen(val route: String) {
     object CreateAd : Screen("create_ad")
     object Favorites : Screen("favorites")
     object Profile : Screen("profile")
+    object Lands : Screen("lands")
 }
 
 sealed class BottomNavItem(val route: String, val icon: ImageVector, val label: String) {
@@ -124,7 +126,14 @@ fun MainNavigation(isLoggedIn: Boolean) {
             composable(Screen.Feed.route) {
                 FeedScreen(
                     onAdClick = { adId -> navController.navigate(Screen.AdDetail.createRoute(adId)) },
-                    onProfileClick = { navController.navigate(Screen.Profile.route) }
+                    onProfileClick = { navController.navigate(Screen.Profile.route) },
+                    onLandsClick = { navController.navigate(Screen.Lands.route) },
+                )
+            }
+            composable(Screen.Lands.route) {
+                LandsScreen(
+                    onAdClick = { adId -> navController.navigate(Screen.AdDetail.createRoute(adId)) },
+                    onBack = { navController.popBackStack() },
                 )
             }
             composable(Screen.AdDetail.route, arguments = listOf(navArgument("adId") { type = NavType.StringType })) { backStackEntry ->

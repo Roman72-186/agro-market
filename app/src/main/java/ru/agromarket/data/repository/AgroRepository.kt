@@ -123,7 +123,7 @@ class AgroRepository @Inject constructor(
     /**
      * FastAPI/Pydantic validation errors (422) return `detail` as a list of
      * `{loc, msg, type, input}` objects rather than a string, e.g.
-     * `[{"type": "enum", "loc": ["body", "type"], "msg": "Input should be 'sell'..."}]`.
+     * `[{"type": "enum", "loc": ["body", "type"], "msg": "Input should be 'sale'..."}]`.
      * Turn that into a readable "field: message" string instead of a raw map dump.
      */
     private fun parseErrorDetail(detail: Any?): String? = when (detail) {

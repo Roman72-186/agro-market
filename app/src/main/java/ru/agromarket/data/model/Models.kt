@@ -3,6 +3,9 @@ package ru.agromarket.data.model
 import com.google.gson.annotations.SerializedName
 import java.math.BigDecimal
 
+/** "Земельные участки" category id in the live backend category tree (GET /categories/). */
+const val LAND_CATEGORY_ID = 56
+
 // ==========================================
 // Auth
 // ==========================================

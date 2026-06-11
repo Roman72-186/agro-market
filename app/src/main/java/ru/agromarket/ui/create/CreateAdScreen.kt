@@ -57,7 +57,7 @@ class CreateAdViewModel @Inject constructor(
     private val repository: AgroRepository
 ) : ViewModel() {
     var step by mutableStateOf(CreateStep.TYPE)
-    var type by mutableStateOf("sell")
+    var type by mutableStateOf("sale")
     var title by mutableStateOf("")
     var description by mutableStateOf("")
     var price by mutableStateOf("")
@@ -94,7 +94,24 @@ class CreateAdViewModel @Inject constructor(
         viewModelScope.launch { (repository.getRegions() as? ApiResult.Success)?.let { regions = it.data } }
     }
 
-    fun selectType(t: String) { type = t; step = CreateStep.CATEGORY }
+    fun selectType(t: String) {
+        if (t == "land") {
+            // "Земли СХ назначения" is a category (Земельные участки), not a backend AdType —
+            // map it to type=sale and jump straight into that category's subcategories.
+            type = "sale"
+            val landCategory = categories.find { it.id == LAND_CATEGORY_ID }
+            if (landCategory != null) {
+                selectCategory(landCategory)
+            } else {
+                selectedCategory = null
+                selectedCategoryId = null
+                step = CreateStep.CATEGORY
+            }
+        } else {
+            type = t
+            step = CreateStep.CATEGORY
+        }
+    }
     fun selectCategory(cat: CategoryTreeResponse) {
         selectedCategory = cat
         selectedSubCategory = null
@@ -258,7 +275,7 @@ fun CreateAdScreen(onSuccess: () -> Unit, onBack: () -> Unit, viewModel: CreateA
                     Text("Что размещаем?", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(32.dp))
                     listOf(
-                        Triple("sell", "Продать" to Icons.Outlined.Storefront, "Зерно, технику, скот и др."),
+                        Triple("sale", "Продать" to Icons.Outlined.Storefront, "Зерно, технику, скот и др."),
                         Triple("service", "Агроуслуги" to Icons.Outlined.Build, "Обработка, перевозка, ремонт"),
                         Triple("land", "Земли СХ назначения" to Icons.Outlined.Terrain, "Продажа и аренда участков"),
                     ).forEach { (t, labelIcon, desc) ->
@@ -349,7 +366,7 @@ fun CreateAdScreen(onSuccess: () -> Unit, onBack: () -> Unit, viewModel: CreateA
                         // Show selected path
                         item {
                             Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.small) {
-                                val typeLabel = when (viewModel.type) { "sell" -> "Продажа"; "service" -> "Агроуслуги"; "land" -> "Земля"; else -> viewModel.type }
+                                val typeLabel = when (viewModel.type) { "sale" -> "Продажа"; "rent" -> "Аренда"; "service" -> "Агроуслуги"; else -> viewModel.type }
                                 val path = listOfNotNull(typeLabel, viewModel.selectedCategory?.name, viewModel.selectedSubCategory?.name).joinToString(" \u203A ")
                                 Text(path, modifier = Modifier.padding(12.dp), color = MaterialTheme.colorScheme.onPrimaryContainer, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                             }
