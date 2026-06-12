@@ -1,6 +1,13 @@
 package ru.agromarket.ui.ad
 
+import android.content.Intent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -14,10 +21,16 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -85,23 +98,62 @@ class AdDetailViewModel @Inject constructor(
 @Composable
 fun AdDetailScreen(adId: String, onBack: () -> Unit, viewModel: AdDetailViewModel = hiltViewModel()) {
     val priceFormat = remember { NumberFormat.getNumberInstance(Locale("ru")) }
+    val context = LocalContext.current
+    var fullscreenPhotoIndex by remember { mutableStateOf<Int?>(null) }
     LaunchedEffect(adId) { viewModel.loadAd(adId) }
 
-    Scaffold(topBar = {
-        AppTopBar(
-            title = "Объявление",
-            onBack = onBack,
-            actions = {
-                IconButton(onClick = { viewModel.toggleFavorite(adId) }) {
-                    Icon(
-                        imageVector = if (viewModel.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                        contentDescription = "Избранное",
-                        tint = if (viewModel.isFavorite) AgroRed else MaterialTheme.colorScheme.onPrimary,
-                    )
+    // ACTION_DIAL opens the dialer with the number prefilled and needs no runtime permission
+    fun dial(phone: String) {
+        context.startActivity(Intent(Intent.ACTION_DIAL, android.net.Uri.parse("tel:$phone")))
+    }
+
+    Scaffold(
+        topBar = {
+            AppTopBar(
+                title = "Объявление",
+                onBack = onBack,
+                actions = {
+                    IconButton(onClick = { viewModel.toggleFavorite(adId) }) {
+                        Icon(
+                            imageVector = if (viewModel.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            contentDescription = "Избранное",
+                            tint = if (viewModel.isFavorite) AgroRed else MaterialTheme.colorScheme.onPrimary,
+                        )
+                    }
+                },
+            )
+        },
+        bottomBar = {
+            // Sticky CTA bar: the two target actions are always reachable without scrolling
+            viewModel.ad?.let { ad ->
+                Surface(tonalElevation = 3.dp, shadowElevation = 8.dp) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp).navigationBarsPadding(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Button(
+                            onClick = { dial(ad.phonePrimary) },
+                            modifier = Modifier.weight(1f).height(48.dp),
+                            shape = MaterialTheme.shapes.medium,
+                        ) {
+                            Icon(Icons.Default.Phone, null, modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Позвонить")
+                        }
+                        OutlinedButton(
+                            onClick = { viewModel.requestContacts(adId) },
+                            modifier = Modifier.weight(1f).height(48.dp),
+                            shape = MaterialTheme.shapes.medium,
+                        ) {
+                            Icon(Icons.Default.ContactPhone, null, modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Контакты")
+                        }
+                    }
                 }
-            },
-        )
-    }) { padding ->
+            }
+        },
+    ) { padding ->
         when {
             viewModel.isLoading -> Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) }
             viewModel.error != null -> Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { Text(viewModel.error!!, color = MaterialTheme.colorScheme.error) }
@@ -114,8 +166,8 @@ fun AdDetailScreen(adId: String, onBack: () -> Unit, viewModel: AdDetailViewMode
                             HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
                                 AsyncImage(
                                     model = ad.photos[page].url,
-                                    contentDescription = null,
-                                    modifier = Modifier.fillMaxSize(),
+                                    contentDescription = "Фото ${page + 1} из ${ad.photos.size}, открыть на весь экран",
+                                    modifier = Modifier.fillMaxSize().clickable { fullscreenPhotoIndex = page },
                                     contentScale = ContentScale.Crop,
                                 )
                             }
@@ -194,18 +246,11 @@ fun AdDetailScreen(adId: String, onBack: () -> Unit, viewModel: AdDetailViewMode
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
                                 Text("Контакты", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.Phone, null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(ad.phonePrimary, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                                }
-                                ad.phoneSecondary?.let {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(Icons.Default.Phone, null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text(it, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                                    }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                // Tappable phone rows: a visible number must actually dial (audit п.3.2)
+                                PhoneRow(phone = ad.phonePrimary, onClick = { dial(ad.phonePrimary) })
+                                ad.phoneSecondary?.let { phone ->
+                                    PhoneRow(phone = phone, onClick = { dial(phone) })
                                 }
                             }
                         }
@@ -240,19 +285,117 @@ fun AdDetailScreen(adId: String, onBack: () -> Unit, viewModel: AdDetailViewMode
                             }
                             Spacer(modifier = Modifier.height(8.dp))
                         }
-                        Button(
-                            onClick = { viewModel.requestContacts(adId) },
-                            modifier = Modifier.fillMaxWidth().height(52.dp),
-                            shape = MaterialTheme.shapes.medium,
-                        ) {
-                            Icon(Icons.Default.ContactPhone, null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Запросить контакты", style = MaterialTheme.typography.titleMedium)
-                        }
-                        Spacer(modifier = Modifier.height(32.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
                     }
+                }
+
+                fullscreenPhotoIndex?.let { startIndex ->
+                    FullscreenGallery(
+                        photos = ad.photos.map { it.url },
+                        startIndex = startIndex,
+                        onDismiss = { fullscreenPhotoIndex = null },
+                    )
                 }
             }
         }
     }
+}
+
+/** Tappable phone row inside the contacts card; numbers are set in JetBrains Mono like all numeric data. */
+@Composable
+private fun PhoneRow(phone: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.Default.Phone, null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = phone,
+            fontFamily = JetBrainsMono,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            text = "Позвонить",
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.primary,
+        )
+    }
+}
+
+/** Fullscreen photo viewer: black backdrop, swipeable pager, pinch/double-tap zoom, "N/M" counter. */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@Composable
+private fun FullscreenGallery(photos: List<String>, startIndex: Int, onDismiss: () -> Unit) {
+    val pagerState = rememberPagerState(initialPage = startIndex, pageCount = { photos.size })
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+            HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
+                ZoomableAsyncImage(model = photos[page], modifier = Modifier.fillMaxSize())
+            }
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(8.dp),
+            ) {
+                Icon(Icons.Default.Close, contentDescription = "Закрыть", tint = Color.White)
+            }
+            if (photos.size > 1) {
+                Surface(
+                    modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(16.dp),
+                    shape = MaterialTheme.shapes.small,
+                    color = Color.Black.copy(alpha = 0.55f),
+                ) {
+                    Text(
+                        text = "${pagerState.currentPage + 1}/${photos.size}",
+                        color = Color.White,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Image with pinch-to-zoom (1x..4x), pan while zoomed and double-tap to toggle zoom.
+ * Touch events are consumed only while pinching or already zoomed in, so single-finger
+ * swipes at 1x still reach the surrounding [HorizontalPager].
+ */
+@Composable
+private fun ZoomableAsyncImage(model: Any?, modifier: Modifier = Modifier) {
+    var scale by remember { mutableStateOf(1f) }
+    var offset by remember { mutableStateOf(Offset.Zero) }
+
+    AsyncImage(
+        model = model,
+        contentDescription = null,
+        contentScale = ContentScale.Fit,
+        modifier = modifier
+            .pointerInput(Unit) {
+                detectTapGestures(onDoubleTap = {
+                    scale = if (scale > 1f) 1f else 2.5f
+                    offset = Offset.Zero
+                })
+            }
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false)
+                    do {
+                        val event = awaitPointerEvent()
+                        val zoomChange = event.calculateZoom()
+                        val panChange = event.calculatePan()
+                        if (zoomChange != 1f || scale > 1f) {
+                            scale = (scale * zoomChange).coerceIn(1f, 4f)
+                            offset = if (scale > 1f) offset + panChange else Offset.Zero
+                            event.changes.forEach { it.consume() }
+                        }
+                    } while (event.changes.any { it.pressed })
+                }
+            }
+            .graphicsLayer(scaleX = scale, scaleY = scale, translationX = offset.x, translationY = offset.y),
+    )
 }

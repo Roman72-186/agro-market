@@ -24,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -38,7 +39,11 @@ import java.math.BigDecimal
 import java.text.NumberFormat
 import java.util.Locale
 
-/** Compact favorites-list row: thumbnail, title/price/status and a remove-favorite heart, on [AdCard] tokens. */
+/**
+ * Compact favorites-list row: thumbnail, title/price/status and a remove-favorite heart,
+ * on [AdCard] tokens. Lots that are no longer active (sold/removed/rejected) are dimmed
+ * so the list doesn't look fresher than it is.
+ */
 @Composable
 fun FavoriteRow(
     favorite: FavoriteResponse,
@@ -47,9 +52,10 @@ fun FavoriteRow(
     modifier: Modifier = Modifier,
 ) {
     val priceFormat = remember { NumberFormat.getNumberInstance(Locale("ru")) }
+    val inactive = favorite.adStatus != null && favorite.adStatus != "active"
 
     Card(
-        modifier = modifier.fillMaxWidth().clickable(onClick = onClick),
+        modifier = modifier.fillMaxWidth().alpha(if (inactive) 0.6f else 1f).clickable(onClick = onClick),
         shape = MaterialTheme.shapes.large,
     ) {
         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {

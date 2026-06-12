@@ -33,6 +33,8 @@ import ru.agromarket.data.model.ProfileUpdateRequest
 import ru.agromarket.data.repository.AgroRepository
 import ru.agromarket.data.repository.ApiResult
 import ru.agromarket.ui.components.AppTopBar
+import ru.agromarket.ui.components.ErrorBanner
+import ru.agromarket.ui.components.ErrorState
 import ru.agromarket.ui.components.StatusBadge
 import ru.agromarket.ui.components.adStatusBadge
 import ru.agromarket.utils.FileUtils
@@ -49,8 +51,20 @@ class ProfileViewModel @Inject constructor(private val repository: AgroRepositor
     var editLastName by mutableStateOf("")
     var editPhone by mutableStateOf("")
     var saveMessage by mutableStateOf<String?>(null)
+    var myAdsError by mutableStateOf<String?>(null)
 
     init { load() }
+
+    /** Owner action from "Мои объявления": remove the ad and drop it from the list. */
+    fun deleteAd(adId: String) {
+        viewModelScope.launch {
+            myAdsError = null
+            when (val r = repository.deleteAd(adId)) {
+                is ApiResult.Success -> myAds = myAds.filter { it.id != adId }
+                is ApiResult.Error -> myAdsError = r.message
+            }
+        }
+    }
 
     fun load() {
         viewModelScope.launch {
@@ -116,6 +130,21 @@ fun ProfileScreen(
     val avatarLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let { viewModel.uploadAvatar(context, it) }
     }
+    var adToDelete by remember { mutableStateOf<AdMyListResponse?>(null) }
+
+    adToDelete?.let { ad ->
+        AlertDialog(
+            onDismissRequest = { adToDelete = null },
+            title = { Text("Удалить объявление?") },
+            text = { Text("«${ad.title}» будет удалено безвозвратно.") },
+            confirmButton = {
+                TextButton(onClick = { viewModel.deleteAd(ad.id); adToDelete = null }) {
+                    Text("Удалить", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = { TextButton(onClick = { adToDelete = null }) { Text("Отмена") } },
+        )
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         AppTopBar(
@@ -126,15 +155,10 @@ fun ProfileScreen(
         if (viewModel.isLoading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) }
         } else if (viewModel.profile == null && viewModel.error != null) {
-            Box(modifier = Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.ErrorOutline, null, modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(viewModel.error ?: "Не удалось загрузить профиль", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Button(onClick = { viewModel.load() }) { Text("Повторить") }
-                }
-            }
+            ErrorState(
+                message = viewModel.error ?: "Не удалось загрузить профиль",
+                onRetry = { viewModel.load() },
+            )
         } else {
             LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 item {
@@ -190,23 +214,59 @@ fun ProfileScreen(
                     }
                 }
                 item { Text("Мои объявления (${viewModel.myAds.size})", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
+                viewModel.myAdsError?.let { err -> item { ErrorBanner(message = err) } }
                 if (viewModel.myAds.isEmpty()) {
                     item { Card(modifier = Modifier.fillMaxWidth()) { Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) { Text("У вас пока нет объявлений", color = MaterialTheme.colorScheme.onSurfaceVariant) } } }
                 } else {
                     items(viewModel.myAds, key = { it.id }) { ad ->
-                        Card(modifier = Modifier.fillMaxWidth().animateItemPlacement().clickable { onMyAds(ad.id) }, shape = MaterialTheme.shapes.medium) {
-                            Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                AsyncImage(model = ad.photoUrl, contentDescription = null, modifier = Modifier.size(60.dp).clip(MaterialTheme.shapes.small), contentScale = ContentScale.Crop)
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(ad.title, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    val (statusLabel, statusTone) = adStatusBadge(ad.status)
-                                    StatusBadge(text = statusLabel, tone = statusTone)
-                                }
-                            }
-                        }
+                        MyAdRow(
+                            ad = ad,
+                            onClick = { onMyAds(ad.id) },
+                            onDelete = { adToDelete = ad },
+                            modifier = Modifier.animateItemPlacement(),
+                        )
                     }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * "Мои объявления" row: thumbnail, title, moderation status and an owner kebab menu.
+ * The status badge is mandatory here — the seller must see "на модерации"/"отклонено"
+ * without contacting support. "Редактировать" will join the menu once an edit screen
+ * exists (`updateAd` is already in the API).
+ */
+@Composable
+private fun MyAdRow(
+    ad: AdMyListResponse,
+    onClick: () -> Unit,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var menuOpen by remember { mutableStateOf(false) }
+
+    Card(modifier = modifier.fillMaxWidth().clickable(onClick = onClick), shape = MaterialTheme.shapes.medium) {
+        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            AsyncImage(model = ad.photoUrl, contentDescription = null, modifier = Modifier.size(60.dp).clip(MaterialTheme.shapes.small), contentScale = ContentScale.Crop)
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(ad.title, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                Spacer(modifier = Modifier.height(4.dp))
+                val (statusLabel, statusTone) = adStatusBadge(ad.status)
+                StatusBadge(text = statusLabel, tone = statusTone)
+            }
+            Box {
+                IconButton(onClick = { menuOpen = true }) {
+                    Icon(Icons.Default.MoreVert, contentDescription = "Действия с объявлением")
+                }
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    DropdownMenuItem(
+                        text = { Text("Удалить", color = MaterialTheme.colorScheme.error) },
+                        leadingIcon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) },
+                        onClick = { menuOpen = false; onDelete() },
+                    )
                 }
             }
         }

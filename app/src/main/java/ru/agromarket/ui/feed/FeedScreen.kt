@@ -31,23 +31,25 @@ import ru.agromarket.data.repository.ApiResult
 import ru.agromarket.ui.components.AdCard
 import ru.agromarket.ui.components.AppTopBar
 import ru.agromarket.ui.components.EmptyState
+import ru.agromarket.ui.components.ErrorBanner
+import ru.agromarket.ui.components.ErrorState
 import ru.agromarket.ui.components.FeedLoadingState
 import ru.agromarket.ui.components.categoryIconFor
 import javax.inject.Inject
 
-// Quick categories with subcategories
-data class QuickCategory(val name: String, val icon: String, val subs: List<String>)
+// Quick categories with subcategories; icons come from categoryIconFor(name)
+data class QuickCategory(val name: String, val subs: List<String>)
 
 val QUICK_CATEGORIES = listOf(
-    QuickCategory("Техника", "🚜", listOf("Тракторы", "Комбайны", "Сеялки", "Опрыскиватели", "Культиваторы")),
-    QuickCategory("Запчасти", "🔧", listOf("К тракторам", "К комбайнам", "Фильтры", "Ремни")),
-    QuickCategory("Семена", "🌱", listOf("Пшеница", "Подсолнечник", "Кукуруза", "Соя")),
-    QuickCategory("Удобрения", "🧪", listOf("Азотные", "Фосфорные", "Калийные", "Комплексные")),
-    QuickCategory("Корма", "🌾", listOf("Комбикорм", "Сено", "Силос", "Жмых")),
-    QuickCategory("Животные", "🐄", listOf("КРС", "Свиньи", "Птица", "Овцы")),
-    QuickCategory("Земля", "🏞️", listOf("Пашня", "Пастбища", "Аренда")),
-    QuickCategory("Оборудование", "⚙️", listOf("Доильное", "Зерносушилки", "Весовое")),
-    QuickCategory("Прочее", "📦", listOf("Инструменты", "Тара", "Стройматериалы")),
+    QuickCategory("Техника", listOf("Тракторы", "Комбайны", "Сеялки", "Опрыскиватели", "Культиваторы")),
+    QuickCategory("Запчасти", listOf("К тракторам", "К комбайнам", "Фильтры", "Ремни")),
+    QuickCategory("Семена", listOf("Пшеница", "Подсолнечник", "Кукуруза", "Соя")),
+    QuickCategory("Удобрения", listOf("Азотные", "Фосфорные", "Калийные", "Комплексные")),
+    QuickCategory("Корма", listOf("Комбикорм", "Сено", "Силос", "Жмых")),
+    QuickCategory("Животные", listOf("КРС", "Свиньи", "Птица", "Овцы")),
+    QuickCategory("Земля", listOf("Пашня", "Пастбища", "Аренда")),
+    QuickCategory("Оборудование", listOf("Доильное", "Зерносушилки", "Весовое")),
+    QuickCategory("Прочее", listOf("Инструменты", "Тара", "Стройматериалы")),
 )
 
 @HiltViewModel
@@ -63,8 +65,29 @@ class FeedViewModel @Inject constructor(
     var selectedType by mutableStateOf<String?>(null)
     var selectedCategoryId by mutableStateOf<Int?>(null)
     var selectedQuickCategory by mutableStateOf<QuickCategory?>(null)
+    var favoriteIds by mutableStateOf<Set<String>>(emptySet())
 
     init { loadFeed() }
+
+    /** Sync favorite ids with the server; soft failure — hearts just stay as they were. */
+    fun refreshFavorites() {
+        viewModelScope.launch {
+            (repository.getFavorites() as? ApiResult.Success)?.let { fav ->
+                favoriteIds = fav.data.map { it.adId }.toSet()
+            }
+        }
+    }
+
+    fun toggleFavorite(adId: String) {
+        viewModelScope.launch {
+            val target = adId !in favoriteIds
+            favoriteIds = if (target) favoriteIds + adId else favoriteIds - adId // optimistic update
+            val result = if (target) repository.addFavorite(adId) else repository.removeFavorite(adId)
+            if (result is ApiResult.Error) {
+                favoriteIds = if (target) favoriteIds - adId else favoriteIds + adId // rollback
+            }
+        }
+    }
 
     fun loadFeed(refresh: Boolean = false) {
         if (refresh) currentPage = 1
@@ -107,6 +130,10 @@ fun FeedScreen(onAdClick: (String) -> Unit, onProfileClick: () -> Unit, viewMode
             .debounce(400)
             .collect { viewModel.runSearch() }
     }
+
+    // Re-sync hearts every time the feed re-enters composition (e.g. back from AdDetail,
+    // where the user may have toggled the favorite from the top bar).
+    LaunchedEffect(Unit) { viewModel.refreshFavorites() }
 
     Column(modifier = Modifier.fillMaxSize()) {
         AppTopBar(
@@ -167,6 +194,11 @@ fun FeedScreen(onAdClick: (String) -> Unit, onProfileClick: () -> Unit, viewMode
         // Content
         when {
             viewModel.isLoading && viewModel.ads.isEmpty() -> FeedLoadingState(modifier = Modifier.fillMaxSize())
+            // Network failure must look like a failure, not like an empty catalog (audit п.3.1)
+            viewModel.error != null && viewModel.ads.isEmpty() -> ErrorState(
+                message = viewModel.error ?: "Не удалось загрузить объявления",
+                onRetry = { viewModel.loadFeed(refresh = true) },
+            )
             viewModel.ads.isEmpty() -> EmptyState(
                 title = "Объявлений пока нет",
                 subtitle = "Попробуйте изменить фильтры или поисковый запрос",
@@ -174,9 +206,19 @@ fun FeedScreen(onAdClick: (String) -> Unit, onProfileClick: () -> Unit, viewMode
             )
             else -> LazyColumn(contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 items(viewModel.ads, key = { it.id }) { ad ->
-                    AdCard(ad = ad, onClick = { onAdClick(ad.id) }, modifier = Modifier.animateItemPlacement())
+                    AdCard(
+                        ad = ad,
+                        onClick = { onAdClick(ad.id) },
+                        isFavorite = ad.id in viewModel.favoriteIds,
+                        onFavoriteClick = { viewModel.toggleFavorite(ad.id) },
+                        modifier = Modifier.animateItemPlacement(),
+                    )
                 }
-                if (viewModel.currentPage < viewModel.totalPages) {
+                // Pagination failure on a non-empty list: keep the loaded items, show the error inline
+                viewModel.error?.let { err ->
+                    item { ErrorBanner(message = err) }
+                }
+                if (viewModel.currentPage < viewModel.totalPages && viewModel.error == null) {
                     item {
                         Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(modifier = Modifier.size(32.dp)) }
                         LaunchedEffect(Unit) { viewModel.loadMore() }

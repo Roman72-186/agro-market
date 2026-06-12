@@ -10,6 +10,21 @@ metadata:
 Открытые пункты аудита (см. [audit.md](../audit.md) от 2026-06-11):
 1. Мёртвый функционал в UI: `forgotPassword`/`resetPassword`/`changePassword` реализованы в API/репозитории, но не вызываются из UI (нет экранов).
 
+Закрыто 2026-06-12 (реализация дизайн-ресёрча, см. [design-research-deep-2026-06-12.md](../design-research-deep-2026-06-12.md), секция 9):
+- Топ-10 дизайн-изменений реализован: ошибка фида с Retry (общий `ErrorState`, п.3.1 аудита);
+  кликабельные телефоны `ACTION_DIAL` + sticky CTA-бар в `AdDetail` (п.3.2); сердечко избранного
+  в фиде с optimistic toggle (п.3.3); boost-бейджи `boostLevel` 1/2/3 в `AdCard` (`boostTier()` +
+  тест `BoostTierTest`); кебаб «Удалить» в «Моих объявлениях» через готовый `deleteAd` (п.3.4);
+  фуллскрин-галерея с pinch/double-tap зумом; избранное — свайп-удаление с Undo-снекбаром,
+  приглушение неактивных лотов (alpha 0.6, мёртвые вниз), пустое состояние с CTA «К объявлениям»;
+  визард — сегментный степпер (олива=пройдено, глина=текущий) + автосохранение черновика
+  в DataStore (`AdDraftManager`, `ad_draft_prefs`, фото не сохраняются — transient URI permissions);
+  токены `AgroCream`/`AgroTerracotta` в Color.kt. `assembleDebug`, `testDebugUnitTest`, `lint` — зелёные.
+- Сознательно не сделано: чипы применённых фильтров (фильтры и так постоянно видимы как FilterChips —
+  дублирование), «расстояние N км» в карточке (нет геолокации в бэке), таблица спеков в `AdDetail`
+  (бэк не отдаёт структурированные характеристики), XL-карточка для boost=3 (лента и так
+  одноколоночная full-width — boost 3 переиспользует усиление tier 2).
+
 Закрыто 2026-06-11:
 - `LandsScreen` доработан (карточки `LandCard` в стиле референса — фото, регион,
   цена; `LandsViewModel` грузит `categoryId = LAND_CATEGORY_ID` через `AgroRepository.getFeed`) и

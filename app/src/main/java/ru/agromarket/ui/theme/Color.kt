@@ -47,16 +47,11 @@ val AgroOutlineVariantDark = Color(0xFF46493D)
 val AgroInverseSurfaceDark = Color(0xFFE6E9DD)
 val AgroInverseOnSurfaceDark = Color(0xFF2D3122)
 
-// Старые имена токенов — оставлены для совместимости с экранами,
-// значения переведены на новую палитру "Глина и Олива"
-val AgroGreen = AgroPrimary
-val AgroGreenLight = AgroSecondary
-val AgroGreenDark = AgroOnPrimaryContainerLight
-val AgroGreenBg = AgroPrimaryContainerLight
-val AgroOrange = AgroAccentClay
 val AgroRed = Color(0xFFE53935)
-val AgroGray = Color(0xFF6E7064)
-val AgroBg = AgroNeutralLight
+
+// Крем/терракота — расширение «Глины и Оливы» под бейджи продвижения и иллюстрации
+val AgroCream = Color(0xFFF6F1E3)
+val AgroTerracotta = Color(0xFFB05F3C)
 
 // Семантические токены состояний/бейджей
 val AgroSuccess = AgroPrimary

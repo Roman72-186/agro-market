@@ -31,7 +31,6 @@ import ru.agromarket.ui.feed.FeedScreen
 import ru.agromarket.ui.ad.AdDetailScreen
 import ru.agromarket.ui.create.CreateAdScreen
 import ru.agromarket.ui.favorites.FavoritesScreen
-import ru.agromarket.ui.lands.LandsScreen
 import ru.agromarket.ui.profile.ChangePasswordScreen
 import ru.agromarket.ui.profile.ProfileScreen
 
@@ -45,7 +44,6 @@ sealed class Screen(val route: String) {
     object Favorites : Screen("favorites")
     object Profile : Screen("profile")
     object ChangePassword : Screen("change_password")
-    object Lands : Screen("lands")
 }
 
 sealed class BottomNavItem(val route: String, val icon: ImageVector, val label: String) {
@@ -140,12 +138,6 @@ fun MainNavigation(isLoggedIn: Boolean) {
                     onProfileClick = { navController.navigate(Screen.Profile.route) },
                 )
             }
-            composable(Screen.Lands.route) {
-                LandsScreen(
-                    onAdClick = { adId -> navController.navigate(Screen.AdDetail.createRoute(adId)) },
-                    onBack = { navController.popBackStack() },
-                )
-            }
             composable(Screen.AdDetail.route, arguments = listOf(navArgument("adId") { type = NavType.StringType })) { backStackEntry ->
                 val adId = backStackEntry.arguments?.getString("adId") ?: return@composable
                 AdDetailScreen(adId = adId, onBack = { navController.popBackStack() })
@@ -154,7 +146,11 @@ fun MainNavigation(isLoggedIn: Boolean) {
                 CreateAdScreen(onSuccess = { navController.navigate(Screen.Feed.route) { popUpTo(Screen.Feed.route) { inclusive = true } } }, onBack = { navController.popBackStack() })
             }
             composable(Screen.Favorites.route) {
-                FavoritesScreen(onAdClick = { adId -> navController.navigate(Screen.AdDetail.createRoute(adId)) })
+                FavoritesScreen(
+                    onAdClick = { adId -> navController.navigate(Screen.AdDetail.createRoute(adId)) },
+                    // Same navigation contract as tapping the "Каталог" bottom tab
+                    onGoToFeed = { navController.navigate(Screen.Feed.route) { popUpTo(Screen.Feed.route) { saveState = true }; launchSingleTop = true; restoreState = true } },
+                )
             }
             composable(Screen.Profile.route) {
                 ProfileScreen(
