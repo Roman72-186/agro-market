@@ -10,7 +10,6 @@ import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.outlined.Terrain
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -99,7 +98,7 @@ class FeedViewModel @Inject constructor(
 
 @OptIn(ExperimentalMaterial3Api::class, FlowPreview::class, ExperimentalFoundationApi::class)
 @Composable
-fun FeedScreen(onAdClick: (String) -> Unit, onProfileClick: () -> Unit, onLandsClick: () -> Unit, viewModel: FeedViewModel = hiltViewModel()) {
+fun FeedScreen(onAdClick: (String) -> Unit, onProfileClick: () -> Unit, viewModel: FeedViewModel = hiltViewModel()) {
 
     // Debounce text input: fire the network search ~400ms after the user stops typing.
     LaunchedEffect(Unit) {
@@ -113,9 +112,6 @@ fun FeedScreen(onAdClick: (String) -> Unit, onProfileClick: () -> Unit, onLandsC
         AppTopBar(
             title = "🌾 АгроМаркет",
             actions = {
-                IconButton(onClick = onLandsClick) {
-                    Icon(Icons.Outlined.Terrain, "Земли СХ назначения", modifier = Modifier.size(26.dp))
-                }
                 IconButton(onClick = onProfileClick) {
                     Icon(Icons.Default.AccountCircle, "Профиль", modifier = Modifier.size(28.dp))
                 }

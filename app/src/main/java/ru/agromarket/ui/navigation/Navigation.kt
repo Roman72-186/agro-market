@@ -138,7 +138,6 @@ fun MainNavigation(isLoggedIn: Boolean) {
                 FeedScreen(
                     onAdClick = { adId -> navController.navigate(Screen.AdDetail.createRoute(adId)) },
                     onProfileClick = { navController.navigate(Screen.Profile.route) },
-                    onLandsClick = { navController.navigate(Screen.Lands.route) },
                 )
             }
             composable(Screen.Lands.route) {
