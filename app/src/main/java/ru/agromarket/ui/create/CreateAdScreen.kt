@@ -238,7 +238,7 @@ class CreateAdViewModel @Inject constructor(
     }
     fun selectLocality(id: Int, name: String) { selectedLocalityId = id; selectedLocalityName = name }
 
-    fun addPhotos(uris: List<Uri>) { photoUris = (photoUris + uris).take(10) }
+    fun addPhotos(uris: List<Uri>) { photoUris = (photoUris + uris).take(MAX_PHOTOS) }
     fun removePhoto(uri: Uri) { photoUris = photoUris - uri }
 
     fun submitAd(context: android.content.Context, onSuccess: () -> Unit) {
@@ -246,28 +246,49 @@ class CreateAdViewModel @Inject constructor(
         if (selectedCategoryId == null) { error = "Не удалось определить категорию"; return }
         if (selectedRegionId == null) { error = "Выберите регион"; return }
         if (phonePrimary.isBlank()) { error = "Укажите телефон"; return }
-        if (photoUris.size < 2) { error = "Загрузите минимум 2 фото"; return }
+        if (photoUris.size < MIN_PHOTOS) { error = "Загрузите минимум $MIN_PHOTOS фото"; return }
 
         viewModelScope.launch {
             isLoading = true; error = null
+            // Convert photos before creating the ad — fail fast without leaving a server-side draft.
+            val files = photoUris.mapNotNull { FileUtils.uriToFile(context, it) }
+            if (files.size < photoUris.size) {
+                error = "Не удалось обработать фото (${photoUris.size - files.size} из ${photoUris.size}). Попробуйте выбрать другие фото."
+                isLoading = false
+                return@launch
+            }
             val request = AdCreateRequest(type = type, categoryId = selectedCategoryId!!, regionId = selectedRegionId!!, districtId = selectedDistrictId, localityId = selectedLocalityId, title = title, description = description.ifBlank { null }, price = price.toBigDecimalOrNull(), phonePrimary = phonePrimary)
             when (val r = repository.createAd(request)) {
                 is ApiResult.Success -> {
                     val adId = r.data.id
-                    val files = photoUris.mapNotNull { FileUtils.uriToFile(context, it) }
-                    if (files.isNotEmpty()) repository.uploadPhotos(adId, files)
-                    when (val submitResult = repository.submitAd(adId)) {
-                        is ApiResult.Success -> {
-                            draftManager.clear() // the ad is published; the draft has served its purpose
-                            onSuccess()
+                    // The server checks photos at submit, so a failed upload must stop the flow —
+                    // otherwise submit fails with a misleading "минимум 2 фото" while photos exist locally.
+                    when (val uploadResult = repository.uploadPhotos(adId, files)) {
+                        is ApiResult.Success -> when (val submitResult = repository.submitAd(adId)) {
+                            is ApiResult.Success -> {
+                                draftManager.clear() // the ad is published; the draft has served its purpose
+                                onSuccess()
+                            }
+                            is ApiResult.Error -> {
+                                repository.deleteAd(adId) // retry re-creates the ad; don't leave an orphaned draft
+                                error = submitResult.message
+                            }
                         }
-                        is ApiResult.Error -> error = submitResult.message
+                        is ApiResult.Error -> {
+                            repository.deleteAd(adId)
+                            error = "Не удалось загрузить фото: ${uploadResult.message}"
+                        }
                     }
                 }
                 is ApiResult.Error -> error = r.message
             }
             isLoading = false
         }
+    }
+
+    companion object {
+        const val MIN_PHOTOS = 2
+        const val MAX_PHOTOS = 5 // server limit: MAX_PHOTOS_PER_AD = 5
     }
 }
 
@@ -324,7 +345,7 @@ fun SearchablePickerDialog(title: String, items: List<Pair<Int, String>>, onSele
 @Composable
 fun CreateAdScreen(onSuccess: () -> Unit, onBack: () -> Unit, viewModel: CreateAdViewModel = hiltViewModel()) {
     val context = LocalContext.current
-    val photoPickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(10)) { uris -> if (uris.isNotEmpty()) viewModel.addPhotos(uris) }
+    val photoPickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(CreateAdViewModel.MAX_PHOTOS)) { uris -> if (uris.isNotEmpty()) viewModel.addPhotos(uris) }
     val fallbackLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris -> if (uris.isNotEmpty()) viewModel.addPhotos(uris) }
     var showRegionPicker by remember { mutableStateOf(false) }
     var showDistrictPicker by remember { mutableStateOf(false) }

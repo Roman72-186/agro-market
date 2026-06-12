@@ -95,7 +95,7 @@ fun CreateAdFormStep(
 
             // Photos
             item {
-                Text("Фото (мин. 2, макс. 10)", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                Text("Фото (мин. ${CreateAdViewModel.MIN_PHOTOS}, макс. ${CreateAdViewModel.MAX_PHOTOS})", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                 Spacer(modifier = Modifier.height(8.dp))
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(viewModel.photoUris) { uri ->
@@ -110,7 +110,7 @@ fun CreateAdFormStep(
                         }
                     }
                 }
-                Text("${viewModel.photoUris.size} из 10 фото", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("${viewModel.photoUris.size} из ${CreateAdViewModel.MAX_PHOTOS} фото", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             viewModel.geoError?.let { err -> item { ErrorBanner(message = err) } }
             viewModel.error?.let { err -> item { ErrorBanner(message = err) } }
