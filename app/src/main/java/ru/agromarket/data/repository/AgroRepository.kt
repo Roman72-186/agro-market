@@ -48,6 +48,10 @@ class AgroRepository @Inject constructor(
         api.forgotPassword(ForgotPasswordRequest(email))
     }
 
+    suspend fun resetPassword(email: String, code: String, newPassword: String): ApiResult<MessageResponse> = safeCall {
+        api.resetPassword(ResetPasswordRequest(email, code, newPassword))
+    }
+
     suspend fun logout() { tokenManager.clear() }
 
     suspend fun getCategories(): ApiResult<List<CategoryTreeResponse>> = safeCall { api.getCategories() }
@@ -97,8 +101,8 @@ class AgroRepository @Inject constructor(
         api.uploadAvatar(part)
     }
 
-    suspend fun changePassword(oldPassword: String, newPassword: String): ApiResult<MessageResponse> = safeCall {
-        api.changePassword(ChangePasswordRequest(oldPassword, newPassword))
+    suspend fun changePassword(currentPassword: String, newPassword: String): ApiResult<MessageResponse> = safeCall {
+        api.changePassword(ChangePasswordRequest(currentPassword, newPassword))
     }
 
     private suspend fun <T> safeCall(call: suspend () -> retrofit2.Response<T>): ApiResult<T> {

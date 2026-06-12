@@ -105,7 +105,13 @@ class ProfileViewModel @Inject constructor(private val repository: AgroRepositor
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun ProfileScreen(onLogout: () -> Unit, onMyAds: (String) -> Unit, onBack: () -> Unit, viewModel: ProfileViewModel = hiltViewModel()) {
+fun ProfileScreen(
+    onLogout: () -> Unit,
+    onMyAds: (String) -> Unit,
+    onBack: () -> Unit,
+    onChangePassword: () -> Unit,
+    viewModel: ProfileViewModel = hiltViewModel()
+) {
     val context = LocalContext.current
     val avatarLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let { viewModel.uploadAvatar(context, it) }
@@ -170,6 +176,16 @@ fun ProfileScreen(onLogout: () -> Unit, onMyAds: (String) -> Unit, onBack: () ->
                                 }
                                 viewModel.saveMessage?.let { Spacer(modifier = Modifier.height(8.dp)); Text(it, color = MaterialTheme.colorScheme.onPrimaryContainer, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold) }
                             }
+                        }
+                    }
+                }
+                item {
+                    Card(modifier = Modifier.fillMaxWidth().clickable { onChangePassword() }, shape = MaterialTheme.shapes.medium) {
+                        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Lock, null, tint = MaterialTheme.colorScheme.primary)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text("Сменить пароль", modifier = Modifier.weight(1f))
+                            Icon(Icons.Default.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }

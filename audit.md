@@ -45,17 +45,44 @@
   «Мелкие») — в `TokenManagerTest` он замокан через MockK, DataStore работает на реальном
   Robolectric `Context` (`app/src/test`).
 - `CryptoManagerTest` (5 тестов: round-trip, decrypt на мусорном/пустом/слишком коротком Base64,
-  decrypt после ротации ключа) лежит в `app/src/androidTest` и требует эмулятор/устройство:
-  `./gradlew connectedDebugAndroidTest`. Не запускался в этой сессии (нет эмулятора), но
-  компилируется (`assembleDebugAndroidTest` зелёный).
+  decrypt после ротации ключа) лежит в `app/src/androidTest`. **Запущен 2026-06-11** на эмуляторе
+  `Medium_Phone_API_36.1` через `./gradlew connectedDebugAndroidTest` — все 5 тестов (плюс
+  `AppContextTest`, итого 6) `PASSED`.
 - В `app/build.gradle.kts` добавлены `org.robolectric:robolectric:4.13` и `androidx.test:core:1.5.0`
   (testImplementation) + `testOptions.unitTests.isIncludeAndroidResources/isReturnDefaultValues`.
 
-### 2. Мёртвый функционал в UI
-`forgotPassword`, `resetPassword`, `changePassword` реализованы в `AgroMarketApi`/`AgroRepository`,
-но не вызываются из UI — на `LoginScreen` нет «Забыли пароль?», в `ProfileScreen` нет смены
-пароля. Либо добавить экраны/действия, либо (если не нужно сейчас) явно отметить как backlog,
-чтобы не путать при следующем аудите.
+### 2. ~~Мёртвый функционал в UI~~ — закрыто 2026-06-11
+Добавлены `ForgotPasswordScreen` (2 шага: email → код + новый пароль, как в `RegisterScreen`) и
+`ChangePasswordScreen` в профиле (текущий/новый/подтверждение пароля). Подключены в
+`Navigation.kt` (`Screen.ForgotPassword`, `Screen.ChangePassword`), точки входа — «Забыли
+пароль?» на `LoginScreen` и пункт «Сменить пароль» в `ProfileScreen`.
+
+По пути сверено с `https://agro.assaru.space/openapi.json` и поправлено несоответствие полей:
+- `ResetPasswordRequest.password` → `newPassword` (`@SerializedName("new_password")`) — бэкенд
+  ждал `new_password`, поле было не замаплено и `resetPassword` вообще отсутствовал в
+  `AgroRepository` (добавлен).
+- `ChangePasswordRequest.oldPassword` → `currentPassword` (`@SerializedName("current_password")`)
+  — бэкенд ждёт `current_password`, не `old_password`.
+
+Валидация нового пароля в новых экранах — минимум 8 символов (бэкенд: 8–128), вынесена в общие
+константы `MIN_PASSWORD_LENGTH`/`PASSWORD_LENGTH_ERROR` (`ui/auth/PasswordRules.kt`) и
+переиспользуется в `RegisterScreen`/`ForgotPasswordScreen`/`ChangePasswordScreen` —
+несогласованность «6 vs 8 символов» закрыта 2026-06-11.
+
+**Живой прогон 2026-06-11** (эмулятор `Medium_Phone_API_36.1`, debug APK):
+- `ForgotPasswordScreen`, шаг EMAIL: ввод email → «Получить код» → бэкенд вернул сообщение
+  «Если email зарегистрирован, код отправлен» → переход на шаг RESET — работает корректно.
+- `ForgotPasswordScreen`, шаг RESET: проверена клиентская валидация — код короче 6 символов →
+  «Введите код из письма»; пароль короче 8 символов → «Пароль минимум 8 символов» (новая
+  проверка из задачи 1) — отображается корректно.
+- Полный успешный сброс пароля (с реальным кодом из письма) и `ChangePasswordScreen` живьём
+  **не проверены**: для `ChangePasswordScreen` нужен вход в существующий аккаунт, а регистрация
+  нового аккаунта требует кода подтверждения из реального письма — недоступно в этой сессии.
+  Обработка 401 при смене пароля (см. ниже) тоже остаётся непроверенной вживую.
+
+**Не проверено**: при смене пароля бэкенд может инвалидировать текущий access-токен — если так,
+`TokenAuthenticator` подхватит 401 и разлогинит штатным образом (см. `MainNavigation`), отдельной
+обработки в `ChangePasswordScreen` нет.
 
 ### 3. ~~`LandsScreen` не подключён~~ — закрыто 2026-06-11
 Экран реализован (список объявлений категории "Земельные участки" через
@@ -89,15 +116,21 @@
   (с комментариями в коде про синхронизацию конкурентных refresh), но по-прежнему блокирует
   OkHttp-поток на каждый запрос и на каждый refresh. Если профилирование покажет проблему —
   кандидат на `@Volatile`-кэш токена, обновляемый из `Flow`.
+  **Перепроверено 2026-06-11**: новых сигналов (профилирование, жалобы на задержки) нет —
+  решение остаётся оправданным, код не менялся.
 - ~~**`TokenManager` создаёт `CryptoManager()` напрямую**~~ — закрыто 2026-06-11:
   `CryptoManager` теперь приходит через конструктор (`@Inject`), Hilt связывает автоматически
   (оба класса `@Singleton @Inject constructor`, без отдельного модуля). Это и сделало
   `TokenManagerTest` возможным — `CryptoManager` в тесте замокан через MockK.
-- **`FileUtils.uriToFile`** — без сжатия/ресайза фото (осознанно отложено до пасса с
-  `ExifInterface`-поворотом, см. комментарий в коде); сейчас только защита от роста `cacheDir`
-  (чистка файлов `upload_*` старше часа).
-- **`CreateAdScreen.kt` — 441 строка**, самый крупный файл в проекте (мастер из 3-4 шагов в одном
-  файле). При следующих доработках мастера стоит подумать о разбиении по шагам.
+- ~~**`FileUtils.uriToFile`**~~ — закрыто 2026-06-11: добавлены `ExifInterface`-поворот по
+  EXIF-ориентации и ресайз/сжатие (downscale до 1600px по большей стороне + JPEG quality 85),
+  существующая логика очистки `cacheDir` (`upload_*` старше часа) сохранена. Файлы теперь всегда
+  сохраняются как `.jpg` — безопасно, т.к. `uploadPhotos`/`uploadAvatar` используют
+  `"image/*".toMediaTypeOrNull()`.
+- ~~**`CreateAdScreen.kt` — 441 строка**~~ — закрыто 2026-06-11: разбит на степ-енам `CreateStep`
+  + отдельные composable на шаг (`CreateAdTypeStep`, `CreateAdCategoryStep`,
+  `CreateAdSubCategoryStep`, `CreateAdFormStep`), `CreateAdViewModel` и общий диалог выбора
+  остались в `CreateAdScreen.kt` (~280 строк). Поведение не менялось.
 - **`QUICK_CATEGORIES` в `FeedScreen.kt`** — отдельный curated-список для быстрых фильтров на
   главном экране; в отличие от прежнего `APP_CATEGORIES` не дублирует логику выбора категории при
   создании объявления (та теперь полностью на серверных данных), так что дублирования смысла
@@ -108,5 +141,7 @@
 ## Что делать в первую очередь
 1. ~~Тесты на `TokenAuthenticator`/`CryptoManager`/`TokenManager` (#1)~~ — закрыто 2026-06-11.
 2. ~~Несовпадение `type` между приложением и `GET /feed` (#4)~~ — закрыто 2026-06-11.
-3. Решить судьбу «забыли пароль» / смены пароля (#2) — либо в UI, либо явный backlog-тикет.
-4. Остальное — низкий приоритет, по мере доработок соответствующих экранов.
+3. ~~«Забыли пароль» / смена пароля (#2)~~ — закрыто 2026-06-11.
+4. Все 6 пунктов из «Мелкие/на усмотрение» (`next-session-prompt.md`) закрыты 2026-06-11.
+5. Остаётся непроверенным вживую: успешный сброс пароля по реальному коду из письма и
+   `ChangePasswordScreen` (нужен вход в существующий аккаунт) — см. пункт 2 выше.

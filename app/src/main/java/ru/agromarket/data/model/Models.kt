@@ -20,7 +20,11 @@ data class LoginResponse(
 )
 data class RefreshTokenRequest(@SerializedName("refresh_token") val refreshToken: String)
 data class ForgotPasswordRequest(val email: String)
-data class ResetPasswordRequest(val email: String, val code: String, val password: String)
+data class ResetPasswordRequest(
+    val email: String,
+    val code: String,
+    @SerializedName("new_password") val newPassword: String
+)
 data class MessageResponse(val message: String)
 
 // ==========================================
@@ -143,7 +147,7 @@ data class ProfileUpdateRequest(
 )
 
 data class ChangePasswordRequest(
-    @SerializedName("old_password") val oldPassword: String,
+    @SerializedName("current_password") val currentPassword: String,
     @SerializedName("new_password") val newPassword: String
 )
 

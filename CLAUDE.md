@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Что это
 
-AgroMarket — нативное Android-приложение (доска объявлений для агро-рынка: техника, запчасти, семена, удобрения, корма, животные, земля). Клиент к REST API `https://agroprompis.tw1.ru/api/v1/` (значение `API_BASE_URL` в [app/build.gradle.kts](app/build.gradle.kts), переопределяется через `buildConfigField`).
+AgroMarket — нативное Android-приложение (доска объявлений для агро-рынка: техника, запчасти, семена, удобрения, корма, животные, земля). Клиент к REST API `https://agro.assaru.space/api/v1/` (значение `API_BASE_URL` в [app/build.gradle.kts](app/build.gradle.kts), переопределяется через `buildConfigField`).
 
 **Репозиторий:** [github.com/Roman72-186/agro-market](https://github.com/Roman72-186/agro-market) — единственный источник правды, локальный код/git/VPS должны быть синхронизированы с ним.
 

@@ -11,6 +11,7 @@ data/
   repository/ AgroRepository + sealed ApiResult<Success|Error>
 di/           AppModule — Hilt-провайдеры OkHttp/Retrofit/Api/TokenManager (SingletonComponent)
 ui/<feature>/ экран + его ViewModel в одном файле (auth, feed, ad, create, favorites, profile, lands, navigation, theme)
+ui/components/ переиспользуемые composables (AdCard, AppTopBar, AuthHero, CategoryIcon, EmptyState, ErrorBanner, FavoriteRow, LandCard, LoadingState, StatusBadge)
 utils/        FileUtils
 ```
 

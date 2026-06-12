@@ -24,6 +24,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import ru.agromarket.ui.auth.ForgotPasswordScreen
 import ru.agromarket.ui.auth.LoginScreen
 import ru.agromarket.ui.auth.RegisterScreen
 import ru.agromarket.ui.feed.FeedScreen
@@ -31,16 +32,19 @@ import ru.agromarket.ui.ad.AdDetailScreen
 import ru.agromarket.ui.create.CreateAdScreen
 import ru.agromarket.ui.favorites.FavoritesScreen
 import ru.agromarket.ui.lands.LandsScreen
+import ru.agromarket.ui.profile.ChangePasswordScreen
 import ru.agromarket.ui.profile.ProfileScreen
 
 sealed class Screen(val route: String) {
     object Login : Screen("login")
     object Register : Screen("register")
+    object ForgotPassword : Screen("forgot_password")
     object Feed : Screen("feed")
     object AdDetail : Screen("ad/{adId}") { fun createRoute(adId: String) = "ad/$adId" }
     object CreateAd : Screen("create_ad")
     object Favorites : Screen("favorites")
     object Profile : Screen("profile")
+    object ChangePassword : Screen("change_password")
     object Lands : Screen("lands")
 }
 
@@ -118,10 +122,17 @@ fun MainNavigation(isLoggedIn: Boolean) {
             popExitTransition = { fadeOut(tween(220)) + slideOutHorizontally(tween(220)) { it / 5 } },
         ) {
             composable(Screen.Login.route) {
-                LoginScreen(onLoginSuccess = { navController.navigate(Screen.Feed.route) { popUpTo(0) { inclusive = true } } }, onNavigateToRegister = { navController.navigate(Screen.Register.route) })
+                LoginScreen(
+                    onLoginSuccess = { navController.navigate(Screen.Feed.route) { popUpTo(0) { inclusive = true } } },
+                    onNavigateToRegister = { navController.navigate(Screen.Register.route) },
+                    onNavigateToForgotPassword = { navController.navigate(Screen.ForgotPassword.route) },
+                )
             }
             composable(Screen.Register.route) {
                 RegisterScreen(onRegisterSuccess = { navController.navigate(Screen.Feed.route) { popUpTo(0) { inclusive = true } } }, onNavigateBack = { navController.popBackStack() })
+            }
+            composable(Screen.ForgotPassword.route) {
+                ForgotPasswordScreen(onResetSuccess = { navController.popBackStack() }, onNavigateBack = { navController.popBackStack() })
             }
             composable(Screen.Feed.route) {
                 FeedScreen(
@@ -147,7 +158,15 @@ fun MainNavigation(isLoggedIn: Boolean) {
                 FavoritesScreen(onAdClick = { adId -> navController.navigate(Screen.AdDetail.createRoute(adId)) })
             }
             composable(Screen.Profile.route) {
-                ProfileScreen(onLogout = { navController.navigate(Screen.Login.route) { popUpTo(0) { inclusive = true } } }, onMyAds = { adId -> navController.navigate(Screen.AdDetail.createRoute(adId)) }, onBack = { navController.popBackStack() })
+                ProfileScreen(
+                    onLogout = { navController.navigate(Screen.Login.route) { popUpTo(0) { inclusive = true } } },
+                    onMyAds = { adId -> navController.navigate(Screen.AdDetail.createRoute(adId)) },
+                    onBack = { navController.popBackStack() },
+                    onChangePassword = { navController.navigate(Screen.ChangePassword.route) },
+                )
+            }
+            composable(Screen.ChangePassword.route) {
+                ChangePasswordScreen(onSuccess = { navController.popBackStack() }, onBack = { navController.popBackStack() })
             }
         }
     }
