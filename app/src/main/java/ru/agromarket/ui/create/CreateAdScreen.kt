@@ -23,10 +23,12 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import ru.agromarket.data.draft.AdDraft
 import ru.agromarket.data.draft.AdDraftManager
 import ru.agromarket.data.model.*
@@ -251,7 +253,10 @@ class CreateAdViewModel @Inject constructor(
         viewModelScope.launch {
             isLoading = true; error = null
             // Convert photos before creating the ad — fail fast without leaving a server-side draft.
-            val files = photoUris.mapNotNull { FileUtils.uriToFile(context, it) }
+            // Bitmap decode/compress is heavy I/O work; keep it off the main thread.
+            val files = withContext(Dispatchers.IO) {
+                photoUris.mapNotNull { FileUtils.uriToFile(context, it) }
+            }
             if (files.size < photoUris.size) {
                 error = "Не удалось обработать фото (${photoUris.size - files.size} из ${photoUris.size}). Попробуйте выбрать другие фото."
                 isLoading = false

@@ -5,14 +5,20 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.net.Uri
+import android.util.Log
 import androidx.exifinterface.media.ExifInterface
 import java.io.File
 import java.io.FileOutputStream
+import java.util.concurrent.atomic.AtomicLong
 
 object FileUtils {
+    private const val TAG = "FileUtils"
     private const val STALE_AGE_MS = 60 * 60 * 1000L // 1 hour
     private const val MAX_DIMENSION = 1600
     private const val JPEG_QUALITY = 85
+
+    /** Monotonic suffix: System.currentTimeMillis() alone collides when two photos convert within 1 ms. */
+    private val fileCounter = AtomicLong(0)
 
     /**
      * Copies the picked image into cacheDir for multipart upload, fixing EXIF rotation
@@ -21,11 +27,15 @@ object FileUtils {
     fun uriToFile(context: Context, uri: Uri): File? {
         return try {
             cleanStaleUploads(context.cacheDir)
-            val sampled = decodeSampledBitmap(context, uri) ?: return null
+            val sampled = decodeSampledBitmap(context, uri)
+            if (sampled == null) {
+                Log.w(TAG, "uriToFile: decode returned null for $uri")
+                return null
+            }
             val rotated = applyExifRotation(context, uri, sampled)
             val scaled = scaleDownIfNeeded(rotated)
 
-            val file = File(context.cacheDir, "upload_${System.currentTimeMillis()}.jpg")
+            val file = File(context.cacheDir, "upload_${System.currentTimeMillis()}_${fileCounter.incrementAndGet()}.jpg")
             FileOutputStream(file).use { out -> scaled.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, out) }
 
             if (scaled !== rotated) rotated.recycle()
@@ -33,15 +43,19 @@ object FileUtils {
             scaled.recycle()
             file
         } catch (e: Exception) {
+            Log.w(TAG, "uriToFile: failed for $uri", e)
             null
         }
     }
 
     /** Decodes the image downsampled to roughly [MAX_DIMENSION] to avoid loading huge bitmaps into memory. */
     private fun decodeSampledBitmap(context: Context, uri: Uri): Bitmap? {
+        // NOTE: decodeStream always returns null with inJustDecodeBounds=true — success is
+        // judged by bounds.outWidth/outHeight, never by the decode call's return value.
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
-            ?: return null
+        val boundsStream = context.contentResolver.openInputStream(uri) ?: return null
+        boundsStream.use { BitmapFactory.decodeStream(it, null, bounds) }
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
 
         val sampleSize = calculateInSampleSize(bounds.outWidth, bounds.outHeight, MAX_DIMENSION)
         val decodeOptions = BitmapFactory.Options().apply { inSampleSize = sampleSize }
