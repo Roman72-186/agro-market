@@ -38,6 +38,7 @@ AgroMarket — нативное Android-приложение (доска объ�
 
 - `usesCleartextTraffic="false"` — API только по HTTPS.
 - Логирование HTTP-тел (`HttpLoggingInterceptor.Level.BODY`) включается только в debug-сборке.
+- [archive/](archive/) — мёртвый код вне `app/src/` (не компилируется, не часть сборки); см. [archive/README.md](archive/README.md) перед тем как что-то оттуда возвращать.
 
 ## Где что искать
 

@@ -10,8 +10,8 @@ data/
   model/      Models.kt — все DTO (request/response) с @SerializedName
   repository/ AgroRepository + sealed ApiResult<Success|Error>
 di/           AppModule — Hilt-провайдеры OkHttp/Retrofit/Api/TokenManager (SingletonComponent)
-ui/<feature>/ экран + его ViewModel в одном файле (auth, feed, ad, create, favorites, profile, lands, navigation, theme)
-ui/components/ переиспользуемые composables (AdCard, AppTopBar, AuthHero, CategoryIcon, EmptyState, ErrorBanner, FavoriteRow, LandCard, LoadingState, StatusBadge)
+ui/<feature>/ экран + его ViewModel в одном файле (auth, feed, ad, create, favorites, profile, navigation, theme)
+ui/components/ переиспользуемые composables (AdCard, AppTopBar, AuthHero, CategoryIcon, EmptyState, ErrorBanner, ErrorState, FavoriteRow, LoadingState, StatusBadge)
 utils/        FileUtils
 ```
 
