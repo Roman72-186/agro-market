@@ -7,6 +7,37 @@ metadata:
 
 Дизайн-модернизация (фазы 0-8) завершена — палитра «Глина и Олива», новые компоненты (AdCard, StatusBadge, EmptyState, AppTopBar, AuthHero, ErrorBanner, CategoryIcon), dark theme, `./gradlew lint` чист. Подробности — [plans/2026-06-10-design-modernization.md](../plans/2026-06-10-design-modernization.md).
 
+Закрыто 2026-06-15 (доводка лого: splash и шапка каталога):
+- Сплэш-экран показывал нечёткую иконку — `windowSplashScreenAnimatedIcon` переиспользовал
+  `mipmap/ic_launcher_foreground` (432px у xxxhdpi), который на сплэше отображается крупнее, чем
+  на иконке приложения, и масштабировался с потерей качества. Добавлен отдельный
+  `app/src/main/res/drawable-nodpi/splash_icon.png` (960×960, контент в той же safe-zone ~65.74%,
+  сгенерирован из `logo.png` без апскейла), `values/themes.xml` и `values-night/themes.xml` →
+  `windowSplashScreenAnimatedIcon="@drawable/splash_icon"`.
+- В шапке каталога (`FeedScreen`) заголовок был `"🌾 АгроМаркет"` — эмодзи-колос заменён на
+  реальный логотип: `AppTopBar` получил параметр `showLogo: Boolean = false` (рисует
+  `R.drawable.logo` 28dp перед текстом title), `FeedScreen` теперь `title = "АгроМаркет"`,
+  `showLogo = true`.
+- `assembleDebug`, `lint`, `testDebugUnitTest` зелёные. APK пересобран и задеплоен на
+  `https://agro.assaru.space/downloads/agromarket-debug.apk` (Content-Length 20165005 совпадает).
+- Изменения не закоммичены.
+
+Закрыто 2026-06-14 (новый логотип):
+- Заменён логотип во всём приложении на новый брендированный (трактор/корова/поле/солнце в
+  круглом бейдже из листа и колоса). Источник — `logo.png` (1254×1254, корень репо), фон убран,
+  векторизован через `vtracer` → `logo.svg` (auto-trace, ~730 КБ, posterized flat-style).
+- Иконка приложения: пересобраны все 5 `mipmap-*/ic_launcher_foreground.png` (новый логотип в
+  safe zone адаптивной иконки, ~66%, как у старой). Splash screen (`windowSplashScreenAnimatedIcon`)
+  переиспользует тот же foreground — обновился автоматически.
+- `AuthHero` (шапка Login/Register): заглушка `Icons.Rounded.Eco` заменена на реальный логотип —
+  добавлен `app/src/main/res/drawable/logo.png` (512×531, прозрачный), `AuthHero.kt` теперь рендерит
+  `Image(painterResource(R.drawable.logo))`.
+- `assembleDebug` собран и задеплоен на VPS `server-main` (72.56.77.253,
+  `/var/www/agromarket-downloads/agromarket-debug.apk`), доступен по
+  `https://agro.assaru.space/downloads/agromarket-debug.apk` (проверено `curl -I`, 200,
+  Content-Length совпадает с локальным APK).
+- Изменения не закоммичены в git (только в рабочем дереве).
+
 Все пункты [audit.md](../audit.md) (от 2026-06-11) закрыты. Открытые на усмотрение пункты из [audit-2026-06-12.md](../audit-2026-06-12.md) §4 (дубли компонентов, не блокируют): `PasswordTextField` повторён 5 раз в auth-экранах; `ErrorState(message, onRetry)` скопирован в `ProfileScreen`/`CreateAdCategoryStep`; `MyAdRow` в `ProfileScreen` почти повторяет `FavoriteRow`; каскад гео-пикеров в `CreateAdFormStep` просится в `PickerField`.
 
 Закрыто 2026-06-12 (фиксы подачи объявлений):

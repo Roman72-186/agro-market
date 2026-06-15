@@ -137,7 +137,8 @@ fun FeedScreen(onAdClick: (String) -> Unit, onProfileClick: () -> Unit, viewMode
 
     Column(modifier = Modifier.fillMaxSize()) {
         AppTopBar(
-            title = "🌾 АгроМаркет",
+            title = "АгроМаркет",
+            showLogo = true,
             actions = {
                 IconButton(onClick = onProfileClick) {
                     Icon(Icons.Default.AccountCircle, "Профиль", modifier = Modifier.size(28.dp))
