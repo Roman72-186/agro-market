@@ -1,5 +1,7 @@
 package ru.agromarket.data.api
 
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import okhttp3.MultipartBody
 import retrofit2.Response
 import retrofit2.http.*
@@ -166,18 +168,19 @@ interface AgroMarketApi {
 }
 
 // Дополнительная модель для "Мои объявления"
+@Serializable
 data class AdMyListResponse(
     val id: String,
     val type: String,
-    @com.google.gson.annotations.SerializedName("category_name") val categoryName: String? = null,
-    @com.google.gson.annotations.SerializedName("region_name") val regionName: String? = null,
+    @SerialName("category_name") val categoryName: String? = null,
+    @SerialName("region_name") val regionName: String? = null,
     val title: String,
-    val price: java.math.BigDecimal? = null,
+    val price: Double? = null,
     val status: String,
-    @com.google.gson.annotations.SerializedName("photo_url") val photoUrl: String? = null,
-    @com.google.gson.annotations.SerializedName("created_at") val createdAt: String,
-    @com.google.gson.annotations.SerializedName("moderation_comment") val moderationComment: String? = null,
-    @com.google.gson.annotations.SerializedName("moderation_feedback") val moderationFeedback: ModerationFeedbackResponse? = null,
-    @com.google.gson.annotations.SerializedName("boost_level") val boostLevel: String = "none",
-    @com.google.gson.annotations.SerializedName("boost_expires_at") val boostExpiresAt: String? = null
+    @SerialName("photo_url") val photoUrl: String? = null,
+    @SerialName("created_at") val createdAt: String,
+    @SerialName("moderation_comment") val moderationComment: String? = null,
+    @SerialName("moderation_feedback") val moderationFeedback: ModerationFeedbackResponse? = null,
+    @SerialName("boost_level") val boostLevel: String = "none",
+    @SerialName("boost_expires_at") val boostExpiresAt: String? = null
 )

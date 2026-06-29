@@ -2,9 +2,15 @@ package ru.agromarket.data.repository
 
 import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.tasks.await
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
+import ru.agromarket.data.ApiJson
 import ru.agromarket.data.api.AgroMarketApi
 import ru.agromarket.data.api.TokenManager
 import ru.agromarket.data.model.*
@@ -133,7 +139,7 @@ class AgroRepository @Inject constructor(
         api.changePassword(ChangePasswordRequest(currentPassword, newPassword))
     }
 
-    suspend fun registerPushToken(token: String): ApiResult<MessageResponse> = safeCall { api.registerPushToken(PushTokenRegisterRequest(token)) }
+    suspend fun registerPushToken(token: String): ApiResult<MessageResponse> = safeCall { api.registerPushToken(PushTokenRegisterRequest(token, "android")) }
     suspend fun unregisterPushToken(token: String): ApiResult<MessageResponse> = safeCall { api.unregisterPushToken(token) }
 
     /**
@@ -154,7 +160,8 @@ class AgroRepository @Inject constructor(
             } else {
                 val errorBody = response.errorBody()?.string()
                 val detail = try {
-                    parseErrorDetail(com.google.gson.Gson().fromJson(errorBody, Map::class.java)?.get("detail"))
+                    val root = ApiJson.parseToJsonElement(errorBody!!).jsonObject["detail"]
+                    parseErrorDetail(root)
                 } catch (_: Exception) { null }
                 ApiResult.Error(detail ?: "Ошибка сервера", response.code())
             }
@@ -169,18 +176,21 @@ class AgroRepository @Inject constructor(
      * `[{"type": "enum", "loc": ["body", "type"], "msg": "Input should be 'sale'..."}]`.
      * Turn that into a readable "field: message" string instead of a raw map dump.
      */
-    private fun parseErrorDetail(detail: Any?): String? = when (detail) {
-        is String -> detail
-        is List<*> -> detail.mapNotNull { item ->
-            val map = item as? Map<*, *> ?: return@mapNotNull item?.toString()
-            val field = (map["loc"] as? List<*>)?.lastOrNull()?.toString()
-            val msg = map["msg"]?.toString()
+    private fun parseErrorDetail(detail: JsonElement?): String? = when (detail) {
+        null -> null
+        is JsonPrimitive -> if (detail.isString) detail.content else detail.toString()
+        is JsonArray -> detail.mapNotNull { item ->
+            val obj = item as? JsonObject
+                ?: return@mapNotNull (item as? JsonPrimitive)?.content ?: item.toString()
+            val field = (obj["loc"] as? JsonArray)?.lastOrNull()
+                ?.let { (it as? JsonPrimitive)?.content }
+            val msg = (obj["msg"] as? JsonPrimitive)?.content
             when {
                 field != null && msg != null -> "$field: $msg"
                 msg != null -> msg
-                else -> map.toString()
+                else -> obj.toString()
             }
         }.joinToString("; ").ifBlank { null }
-        else -> detail?.toString()
+        else -> detail.toString()
     }
 }

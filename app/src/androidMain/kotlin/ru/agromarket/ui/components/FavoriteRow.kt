@@ -35,7 +35,6 @@ import coil.compose.AsyncImage
 import ru.agromarket.data.model.FavoriteResponse
 import ru.agromarket.ui.theme.AgroMarketTheme
 import ru.agromarket.ui.theme.JetBrainsMono
-import java.math.BigDecimal
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -126,7 +125,7 @@ private fun FavoriteRowPreview() {
                 adId = "1",
                 adTitle = "Трактор МТЗ-82.1, 2018 г., в отличном состоянии",
                 adPhotoUrl = null,
-                adPrice = BigDecimal(1250000),
+                adPrice = 1250000.0,
                 adStatus = "active",
                 createdAt = "",
             ),

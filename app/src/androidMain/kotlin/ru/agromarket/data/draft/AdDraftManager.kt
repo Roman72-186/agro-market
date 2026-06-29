@@ -6,9 +6,11 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
-import com.google.gson.Gson
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import ru.agromarket.data.ApiJson
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -19,6 +21,7 @@ private val Context.draftDataStore: DataStore<Preferences> by preferencesDataSto
  * grants transient read permissions that don't survive process death, so a restored
  * draft asks the user to re-attach photos instead of silently failing the upload.
  */
+@Serializable
 data class AdDraft(
     val type: String = "sale",
     val title: String = "",
@@ -48,14 +51,12 @@ class AdDraftManager @Inject constructor(
         private val DRAFT_JSON = stringPreferencesKey("create_ad_draft")
     }
 
-    private val gson = Gson()
-
     suspend fun save(draft: AdDraft) {
-        context.draftDataStore.edit { it[DRAFT_JSON] = gson.toJson(draft) }
+        context.draftDataStore.edit { it[DRAFT_JSON] = ApiJson.encodeToString(draft) }
     }
 
     suspend fun load(): AdDraft? = context.draftDataStore.data.first()[DRAFT_JSON]?.let { json ->
-        try { gson.fromJson(json, AdDraft::class.java) } catch (_: Exception) { null }
+        try { ApiJson.decodeFromString<AdDraft>(json) } catch (_: Exception) { null }
     }
 
     suspend fun clear() {

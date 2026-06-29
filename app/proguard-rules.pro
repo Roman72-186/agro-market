@@ -8,11 +8,23 @@
 -keep class ru.agromarket.data.** { *; }
 -keepclassmembers class ru.agromarket.data.** { *; }
 
-# Gson
--keep class com.google.gson.** { *; }
--keepclassmembers,allowobfuscation class * {
-    @com.google.gson.annotations.SerializedName <fields>;
+# kotlinx.serialization
+# (DTO-классы и сгенерированные $$serializer лежат в ru.agromarket.data.** —
+#  уже сохранены keep-правилом выше; ниже — общие правила рантайма сериализации.)
+-keepattributes RuntimeVisibleAnnotations,AnnotationDefault
+-if @kotlinx.serialization.Serializable class **
+-keepclassmembers class <1> {
+    static <1>$Companion Companion;
+    static <1>$$serializer INSTANCE;
+    kotlinx.serialization.KSerializer serializer(...);
 }
+-keepclassmembers class kotlinx.serialization.json.** {
+    *** Companion;
+}
+-keepclasseswithmembers class kotlinx.serialization.json.** {
+    kotlinx.serialization.KSerializer serializer(...);
+}
+-dontwarn kotlinx.serialization.**
 
 # Retrofit
 -keepclasseswithmembers class * {

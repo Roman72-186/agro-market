@@ -29,6 +29,11 @@ kotlin {
     iosSimulatorArm64()
 
     sourceSets {
+        commonMain.dependencies {
+            // kotlinx.serialization: DTO (@Serializable) живут в commonMain.
+            implementation(libs.kotlinx.serialization.json)
+        }
+
         androidMain.dependencies {
             // Compose BOM (Android, androidx.compose — НЕ org.jetbrains.compose: см. Фаза 0)
             implementation(project.dependencies.platform(libs.compose.bom))
@@ -52,14 +57,11 @@ kotlin {
             // Hilt DI (runtime)
             implementation(libs.hilt.android)
 
-            // Retrofit + OkHttp
+            // Retrofit + OkHttp (converter — kotlinx.serialization вместо Gson)
             implementation(libs.retrofit)
-            implementation(libs.retrofit.converter.gson)
+            implementation(libs.retrofit.converter.kotlinx.serialization)
             implementation(libs.okhttp)
             implementation(libs.okhttp.logging.interceptor)
-
-            // Gson
-            implementation(libs.gson)
 
             // Coil (загрузка изображений)
             implementation(libs.coil.compose)

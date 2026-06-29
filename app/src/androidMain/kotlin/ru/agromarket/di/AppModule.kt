@@ -4,11 +4,13 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
 import ru.agromarket.BuildConfig
+import ru.agromarket.data.ApiJson
 import ru.agromarket.data.api.AgroMarketApi
 import ru.agromarket.data.api.AuthInterceptor
 import ru.agromarket.data.api.TokenAuthenticator
@@ -46,7 +48,7 @@ object AppModule {
         return Retrofit.Builder()
             .baseUrl(BuildConfig.API_BASE_URL)
             .client(okHttpClient)
-            .addConverterFactory(GsonConverterFactory.create())
+            .addConverterFactory(ApiJson.asConverterFactory("application/json".toMediaType()))
             .build()
     }
 

@@ -47,7 +47,6 @@ import ru.agromarket.ui.theme.AgroAccentClay
 import ru.agromarket.ui.theme.AgroCream
 import ru.agromarket.ui.theme.AgroMarketTheme
 import ru.agromarket.ui.theme.JetBrainsMono
-import java.math.BigDecimal
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -237,7 +236,7 @@ private fun AdCardPreview() {
                 regionId = 1,
                 regionName = "Краснодарский край",
                 title = "Трактор МТЗ-82.1, 2018 г., в отличном состоянии",
-                price = BigDecimal(1250000),
+                price = 1250000.0,
                 boostLevel = "none",
                 status = "active",
                 photoUrl = null,

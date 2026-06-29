@@ -102,7 +102,7 @@ class CreateAdViewModel @Inject constructor(
                     type = ad.type
                     title = ad.title
                     description = ad.description ?: ""
-                    price = ad.price?.toPlainString() ?: ""
+                    price = ad.price?.let { if (it % 1.0 == 0.0) it.toLong().toString() else it.toString() } ?: ""
                     phonePrimary = ad.phonePrimary
                     selectedCategoryId = ad.categoryId
                     selectedRegionId = ad.regionId; selectedRegionName = ad.regionName ?: ""
@@ -319,7 +319,7 @@ class CreateAdViewModel @Inject constructor(
                 isLoading = false
                 return@launch
             }
-            val request = AdCreateRequest(type = type, categoryId = selectedCategoryId!!, regionId = selectedRegionId!!, districtId = selectedDistrictId, localityId = selectedLocalityId, title = title, description = description.ifBlank { null }, price = price.toBigDecimalOrNull(), phonePrimary = phonePrimary)
+            val request = AdCreateRequest(type = type, categoryId = selectedCategoryId!!, regionId = selectedRegionId!!, districtId = selectedDistrictId, localityId = selectedLocalityId, title = title, description = description.ifBlank { null }, price = price.toDoubleOrNull(), phonePrimary = phonePrimary)
             when (val r = repository.createAd(request)) {
                 is ApiResult.Success -> {
                     val newAdId = r.data.id
@@ -360,7 +360,7 @@ class CreateAdViewModel @Inject constructor(
                 isLoading = false
                 return@launch
             }
-            val request = AdCreateRequest(type = type, categoryId = selectedCategoryId!!, regionId = selectedRegionId!!, districtId = selectedDistrictId, localityId = selectedLocalityId, title = title, description = description.ifBlank { null }, price = price.toBigDecimalOrNull(), phonePrimary = phonePrimary)
+            val request = AdCreateRequest(type = type, categoryId = selectedCategoryId!!, regionId = selectedRegionId!!, districtId = selectedDistrictId, localityId = selectedLocalityId, title = title, description = description.ifBlank { null }, price = price.toDoubleOrNull(), phonePrimary = phonePrimary)
             when (val updateResult = repository.updateAd(adId, request)) {
                 is ApiResult.Success -> {
                     if (files.isNotEmpty()) {

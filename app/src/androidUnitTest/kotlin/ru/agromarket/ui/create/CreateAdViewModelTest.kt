@@ -21,7 +21,6 @@ import ru.agromarket.data.model.AdDetailResponse
 import ru.agromarket.data.model.AdPhotoResponse
 import ru.agromarket.data.repository.AgroRepository
 import ru.agromarket.data.repository.ApiResult
-import java.math.BigDecimal
 
 /**
  * Covers the `needs_revision` edit/resubmit flow: prefilling the wizard from an existing ad
@@ -44,7 +43,7 @@ class CreateAdViewModelTest {
         regionName = "Краснодарский край",
         title = "Трактор МТЗ",
         description = "Описание",
-        price = BigDecimal("500000"),
+        price = 500000.0,
         phonePrimary = "+79001234567",
         status = "needs_revision",
         boostLevel = "none",
