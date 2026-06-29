@@ -44,8 +44,8 @@ Android должен оставаться рабочим на каждом ша�
 | Фаза | Что | Среда | Статус |
 |---|---|---|---|
 | 0 | Каркас CMP + bump Kotlin 1.9→2.0, KMP+Compose MP плагины, source sets | Windows | **ГОТОВА** (закоммичено `d6a1657`, гейт зелёный) |
-| 1a | Gson → kotlinx.serialization | Windows | **СЛЕДУЮЩАЯ** |
-| 1b | Retrofit/OkHttp → Ktor | Windows | не начата |
+| 1a | Gson → kotlinx.serialization | Windows | **ГОТОВА** (`4777d6a`, гейт зелёный) |
+| 1b | Retrofit/OkHttp → Ktor | Windows | **СЛЕДУЮЩАЯ** |
 | 1c | Hilt → Koin | Windows | не начата |
 | 1d | Coil 2→3, выпил Accompanist | Windows | не начата |
 | 1e | DataStore → multiplatform | Windows | не начата |
@@ -81,13 +81,25 @@ Android должен оставаться рабочим на каждом ша�
 
 ## Next Steps
 
-1. **Запустить Фазу 1a** (Gson → kotlinx.serialization) отдельным `general-purpose` агентом.
-   Промпт: ссылка на план (раздел «Фаза 1a»), путь к проекту, среда (Windows, `gradlew.bat`,
-   JDK/JBR), Definition of Done = `assembleDebug` + `testDebugUnitTest` зелёные + `Models.kt`
-   в `commonMain`; версии сверять через Context7; коммитить отдельным коммитом фазы.
-2. По завершении 1a — ревью `git diff` коммита фазы + прогон гейта, затем обновить этот handoff
-   (1a → готова, 1b → следующая) и запустить 1b. Повторять цикл до Фазы 2.
+1. **Запустить Фазу 1b** (Retrofit/OkHttp → Ktor) отдельным `general-purpose` агентом прямо в репо.
+   DoD = `assembleDebug` + `testDebugUnitTest` + `compileCommonMainKotlinMetadata` зелёные;
+   сетевой слой (`AgroMarketApi`, `AgroRepository`, интерсепторы) в `commonMain`; версии через
+   Context7; отдельный коммит фазы. **Переиспользовать `ApiJson` из Фазы 1a** в Ktor
+   `ContentNegotiation` (`json(ApiJson)`); НЕ менять флаги `encodeDefaults=false` (иначе PUT
+   `ProfileUpdateRequest` зашлёт null-дефолты).
+2. По завершении 1b — ревью `git diff` + гейт (вкл. `compileCommonMainKotlinMetadata`), обновить
+   handoff, запустить 1c. Цикл до Фазы 2.
 3. К Фазе 3 — решить вопрос Mac-окружения и Apple Developer Program.
+
+## Заметки по фазам (накопительно)
+
+- **Фаза 1a:** kotlinx-serialization-json `1.7.3`, retrofit2-kotlinx-serialization-converter `1.0.0`
+  (Retrofit пока остаётся, конвертер уйдёт в 1b). `ApiJson` (`commonMain/data/ApiJson.kt`) —
+  единый `Json { ignoreUnknownKeys; coerceInputValues }`, переиспользовать в Ktor.
+  Решение: цена `BigDecimal → Double` (только отображение, целые рубли ≪ 2^53). Латентный риск:
+  non-null поля без дефолта бросят `MissingFieldException`, если сервер их не пришлёт (Gson клал
+  null) — первый подозреваемый, если в 1b/3 экран перестанет парситься. `encodeDefaults` НЕ включать
+  глобально. `CLAUDE.md`/`docs/architecture.md` ещё упоминают Gson — обновить пачкой позже.
 
 ## Verification
 
