@@ -5,6 +5,28 @@ metadata:
   type: project
 ---
 
+Закрыто 2026-06-19 («Ошибка сервера» на входе/регистрации):
+- Причина — `asyncpg.exceptions.InternalServerError: (EMAXCONNSESSION) max clients reached in
+  session mode - max clients are limited to pool_size: 15`. БД бэкенда (`agro-market`, VPS
+  `server-main`) подключена через Supabase **Session Pooler** (порт 5432, лимит 15 одновременных
+  клиентов 1:1 с backend-подключениями), а SQLAlchemy-движок (`backend/app/core/database.py`)
+  создаёт до 30 подключений (`pool_size=20, max_overflow=10`) **на каждый процесс** — а процессов
+  4 (uvicorn `--workers 2` + celery-worker + celery-beat, все импортируют один и тот же модуль).
+  Любой всплеск параллельных запросов выбивал лимит — ловилось на `register` (падал на первом же
+  `SELECT User`, ещё до отправки email), но реально на любом эндпоинте с обращением к БД.
+- Фикс — переход на Supabase **Transaction Pooler** (порт 6543, мультиплексирует клиентов, лимит
+  клиентов не привязан 1:1 к backend pool size) + `connect_args={"statement_cache_size": 0}` в
+  `create_async_engine` (обязательно для asyncpg под PgBouncer/Supavisor transaction mode, иначе
+  `prepared statement ... already exists`). `.env`: `POSTGRES_PORT=6543`. Бэкапы —
+  `.env.pre-pooler-fix.bak`, `database.py.pre-pooler-fix.bak`. Передеплоены `backend`,
+  `celery-worker`, `celery-beat` (`docker compose build backend && up -d --no-deps ...`).
+  Проверено: 20 параллельных запросов (register/login/categories) — без единого 500, без
+  `EMAXCONNSESSION`/`prepared statement` в логах. Подробности и ход исследования —
+  [plans/2026-06-18-db-connection-pool-fix.md](../plans/2026-06-18-db-connection-pool-fix.md).
+- Открыто на будущее: мёртвый `database_url_sync` (`config.py:43`, не используется) и сверка
+  лимита backend-подключений Supabase с суммой `pool_size`/`max_overflow` по всем процессам при
+  росте нагрузки.
+
 Дизайн-модернизация (фазы 0-8) завершена — палитра «Глина и Олива», новые компоненты (AdCard, StatusBadge, EmptyState, AppTopBar, AuthHero, ErrorBanner, CategoryIcon), dark theme, `./gradlew lint` чист. Подробности — [plans/2026-06-10-design-modernization.md](../plans/2026-06-10-design-modernization.md).
 
 Закрыто 2026-06-15 (доводка лого: splash и шапка каталога):

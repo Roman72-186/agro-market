@@ -10,7 +10,7 @@ AgroMarket — нативное Android-приложение (доска объ�
 
 **Репозиторий:** [github.com/Roman72-186/agro-market](https://github.com/Roman72-186/agro-market) — единственный источник правды, локальный код/git/VPS должны быть синхронизированы с ним.
 
-Стек: Kotlin 1.9.22 · Jetpack Compose (BOM 2024.02) + Material3 · Hilt 2.50 (DI) · Retrofit 2.9 + OkHttp 4.12 + Gson · DataStore Preferences (токены) · Coil (картинки) · Navigation Compose · Accompanist.
+Стек: Kotlin 1.9.22 · Jetpack Compose (BOM 2024.02) + Material3 · Hilt 2.50 (DI) · Retrofit 2.9 + OkHttp 4.12 + Gson · DataStore Preferences (токены, черновик объявления) · Coil (картинки) · Navigation Compose · Accompanist · Firebase Cloud Messaging (push).
 `minSdk 26`, `targetSdk/compileSdk 34`, JDK 17, AGP 8.2.2.
 
 ## Команды
@@ -33,11 +33,16 @@ AgroMarket — нативное Android-приложение (доска объ�
 - **Сеть только через `AgroRepository`.** Каждый метод — `safeCall { ... }` → `ApiResult<T>`. Не вызывай `AgroMarketApi` напрямую из ViewModel.
 - **Авторизация:** `AuthInterceptor` подставляет `Authorization: Bearer <token>` всем запросам, кроме `/auth/`. `TokenManager` хранит access/refresh в DataStore (`auth_prefs`, шифрование через `CryptoManager`).
 - **Загрузка файлов** — multipart из репозитория: part `files` для фото, `file` для аватара.
+- **Push (FCM):** `AgroFirebaseMessagingService` (`fcm/`) показывает уведомления с deep link на объявление (`ad_id` → `MainActivity.EXTRA_AD_ID`). Регистрация токена — `repository.registerPushToken(...)` (`profile/me/push-tokens`), best-effort: без `google-services.json` нет `FirebaseApp` и токена, всё молча no-op.
+- **Черновик создания объявления** — `AdDraftManager` (`data/draft/`) хранит поля мастера в DataStore (`ad_draft_prefs`). URI фото намеренно НЕ сохраняются (transient-разрешения не переживают смерть процесса) — после восстановления пользователь прикрепляет фото заново.
+- **Монетизация через шов `PaymentGateway`** (`data/payment/`): экраны boost (`ui/boost/`) и подписки (`ui/subscription/`) зависят только от интерфейса, реализация связывается в [di/PaymentModule.kt](app/src/main/java/ru/agromarket/di/PaymentModule.kt). Сейчас активна `SimulatedPaymentGateway`: boost идёт через реальный бэкенд ЮKassa (`repository.createPayment` → `confirmation_url`, активация — вебхуком), флаг `MOCK_BOOST` имитирует оплату без редиректа; Pro-подписка отложена и всегда мок. Смена провайдера — только заменой биндинга в `PaymentModule`, экраны не трогать.
 
 ## Замечания
 
 - `usesCleartextTraffic="false"` — API только по HTTPS.
 - Логирование HTTP-тел (`HttpLoggingInterceptor.Level.BODY`) включается только в debug-сборке.
+- `google-services.json` не в репозитории; плагин `com.google.gms.google-services` применяется условно (`if (file(...).exists())`), поэтому сборка проходит без него — но push не работает, пока файл не добавлен.
+- CI ([.github/workflows/android-build.yml](.github/workflows/android-build.yml)): на push/PR в `main` гоняет `testDebugUnitTest` + `assembleDebug` на JDK 17 и грузит debug APK артефактом.
 - [archive/](archive/) — мёртвый код вне `app/src/` (не компилируется, не часть сборки); см. [archive/README.md](archive/README.md) перед тем как что-то оттуда возвращать.
 
 ## Где что искать

@@ -14,3 +14,22 @@ app/release/
 *.aab
 *.ap_
 *.dex
+
+# Секреты — НИКОГДА не коммитить
+app/google-services.json
+**/google-services.json
+*-firebase-adminsdk-*.json
+**/*-firebase-adminsdk-*.json
+
+# Локальные артефакты дистрибуции / скачанные SDK
+delivery/
+
+# Сгенерированные PDF (исходники — соответствующие .md)
+docs/*.pdf
+
+# Локальные вспомогательные скрипты
+tools/
+
+# Python
+__pycache__/
+*.pyc
