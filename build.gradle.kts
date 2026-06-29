@@ -1,6 +1,11 @@
 plugins {
-    id("com.android.application") version "8.2.2" apply false
-    id("org.jetbrains.kotlin.android") version "1.9.22" apply false
-    id("com.google.dagger.hilt.android") version "2.50" apply false
-    id("org.jetbrains.kotlin.plugin.serialization") version "1.9.22" apply false
+    alias(libs.plugins.android.application) apply false
+    alias(libs.plugins.kotlin.android) apply false
+    alias(libs.plugins.kotlin.multiplatform) apply false
+    alias(libs.plugins.kotlin.compose) apply false
+    alias(libs.plugins.compose.multiplatform) apply false
+    alias(libs.plugins.hilt.android) apply false
+    alias(libs.plugins.kotlin.serialization) apply false
+    // Applied conditionally in app/build.gradle.kts — requires google-services.json.
+    alias(libs.plugins.google.services) apply false
 }

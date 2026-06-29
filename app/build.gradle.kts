@@ -1,9 +1,106 @@
 plugins {
-    id("com.android.application")
-    id("org.jetbrains.kotlin.android")
-    id("com.google.dagger.hilt.android")
-    id("org.jetbrains.kotlin.plugin.serialization")
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.multiplatform)
+    alias(libs.plugins.compose.multiplatform)
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.hilt.android)
+    alias(libs.plugins.kotlin.serialization)
     kotlin("kapt")
+}
+
+// google-services.json isn't always checked in; without it this plugin fails the build.
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
+kotlin {
+    androidTarget {
+        compilations.all {
+            kotlinOptions {
+                jvmTarget = "17"
+            }
+        }
+    }
+
+    // iOS-таргеты объявлены, но компилируются ТОЛЬКО на macOS (Kotlin/Native).
+    // На Windows их сборка не запускается и не требуется (Фаза 0 проверяется через Android).
+    iosX64()
+    iosArm64()
+    iosSimulatorArm64()
+
+    sourceSets {
+        androidMain.dependencies {
+            // Compose BOM (Android, androidx.compose — НЕ org.jetbrains.compose: см. Фаза 0)
+            implementation(project.dependencies.platform(libs.compose.bom))
+            implementation(libs.compose.ui)
+            implementation(libs.compose.ui.graphics)
+            implementation(libs.compose.ui.tooling.preview)
+            implementation(libs.compose.material3)
+            implementation(libs.compose.material.icons.extended)
+            implementation(libs.compose.animation)
+            implementation(libs.compose.animation.core)
+            implementation(libs.activity.compose)
+
+            // Navigation
+            implementation(libs.navigation.compose)
+            implementation(libs.hilt.navigation.compose)
+
+            // Lifecycle
+            implementation(libs.lifecycle.viewmodel.compose)
+            implementation(libs.lifecycle.runtime.compose)
+
+            // Hilt DI (runtime)
+            implementation(libs.hilt.android)
+
+            // Retrofit + OkHttp
+            implementation(libs.retrofit)
+            implementation(libs.retrofit.converter.gson)
+            implementation(libs.okhttp)
+            implementation(libs.okhttp.logging.interceptor)
+
+            // Gson
+            implementation(libs.gson)
+
+            // Coil (загрузка изображений)
+            implementation(libs.coil.compose)
+
+            // DataStore (хранение токенов)
+            implementation(libs.datastore.preferences)
+
+            // Accompanist (swipe refresh, permissions)
+            implementation(libs.accompanist.swiperefresh)
+            implementation(libs.accompanist.permissions)
+
+            // Core
+            implementation(libs.core.ktx)
+            implementation(libs.core.splashscreen)
+            implementation(libs.exifinterface)
+
+            // Firebase Cloud Messaging (push notifications)
+            implementation(project.dependencies.platform(libs.firebase.bom))
+            implementation(libs.firebase.messaging.ktx)
+            implementation(libs.kotlinx.coroutines.play.services)
+        }
+
+        androidUnitTest.dependencies {
+            implementation(libs.junit)
+            implementation(libs.mockk)
+            implementation(libs.kotlinx.coroutines.test)
+            implementation(libs.robolectric)
+            implementation(libs.androidx.test.core)
+        }
+
+        androidInstrumentedTest.dependencies {
+            implementation(libs.androidx.test.ext.junit)
+            implementation(libs.androidx.test.runner)
+        }
+
+        iosMain.dependencies {
+            // Только для iOS-stub (ComposeUIViewController). На Android не попадает.
+            implementation(compose.runtime)
+            implementation(compose.ui)
+        }
+    }
 }
 
 android {
@@ -35,17 +132,9 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
-
     buildFeatures {
         compose = true
         buildConfig = true
-    }
-
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.8"
     }
 
     testOptions {
@@ -56,66 +145,10 @@ android {
     }
 }
 
+// Hilt annotation processor (kapt). Единственный потребитель kapt — Hilt;
+// будет полностью устранён в Фазе 1c (Hilt → Koin).
 dependencies {
-    // Compose BOM
-    val composeBom = platform("androidx.compose:compose-bom:2024.02.00")
-    implementation(composeBom)
-    implementation("androidx.compose.ui:ui")
-    implementation("androidx.compose.ui:ui-graphics")
-    implementation("androidx.compose.ui:ui-tooling-preview")
-    implementation("androidx.compose.material3:material3")
-    implementation("androidx.compose.material:material-icons-extended")
-    implementation("androidx.compose.animation:animation")
-    implementation("androidx.compose.animation:animation-core")
-    implementation("androidx.activity:activity-compose:1.8.2")
-    debugImplementation("androidx.compose.ui:ui-tooling")
-
-    // Navigation
-    implementation("androidx.navigation:navigation-compose:2.7.7")
-    implementation("androidx.hilt:hilt-navigation-compose:1.1.0")
-
-    // Lifecycle
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.7.0")
-
-    // Hilt DI
-    implementation("com.google.dagger:hilt-android:2.50")
-    kapt("com.google.dagger:hilt-compiler:2.50")
-
-    // Retrofit + OkHttp
-    implementation("com.squareup.retrofit2:retrofit:2.9.0")
-    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
-
-    // Gson
-    implementation("com.google.code.gson:gson:2.10.1")
-
-    // Coil (загрузка изображений)
-    implementation("io.coil-kt:coil-compose:2.5.0")
-
-    // DataStore (хранение токенов)
-    implementation("androidx.datastore:datastore-preferences:1.0.0")
-
-    // Accompanist (swipe refresh, permissions)
-    implementation("com.google.accompanist:accompanist-swiperefresh:0.32.0")
-    implementation("com.google.accompanist:accompanist-permissions:0.32.0")
-
-    // Core
-    implementation("androidx.core:core-ktx:1.12.0")
-    implementation("androidx.core:core-splashscreen:1.0.1")
-    implementation("androidx.exifinterface:exifinterface:1.3.7")
-
-    // Unit tests (JVM)
-    testImplementation("junit:junit:4.13.2")
-    testImplementation("io.mockk:mockk:1.13.9")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
-    testImplementation("org.robolectric:robolectric:4.13")
-    testImplementation("androidx.test:core:1.5.0")
-
-    // Instrumented tests (device/emulator)
-    androidTestImplementation("androidx.test.ext:junit:1.1.5")
-    androidTestImplementation("androidx.test:runner:1.5.2")
+    add("kapt", libs.hilt.compiler)
 }
 
 kapt {
