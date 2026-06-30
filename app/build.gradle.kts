@@ -32,6 +32,13 @@ kotlin {
         commonMain.dependencies {
             // kotlinx.serialization: DTO (@Serializable) живут в commonMain.
             implementation(libs.kotlinx.serialization.json)
+
+            // Ktor Client — сетевой слой (AgroMarketApi, AgroRepository, фабрика клиента) в commonMain.
+            implementation(libs.ktor.client.core)
+            implementation(libs.ktor.client.content.negotiation)
+            implementation(libs.ktor.serialization.kotlinx.json)
+            implementation(libs.ktor.client.logging)
+            implementation(libs.ktor.client.auth)
         }
 
         androidMain.dependencies {
@@ -57,11 +64,8 @@ kotlin {
             // Hilt DI (runtime)
             implementation(libs.hilt.android)
 
-            // Retrofit + OkHttp (converter — kotlinx.serialization вместо Gson)
-            implementation(libs.retrofit)
-            implementation(libs.retrofit.converter.kotlinx.serialization)
-            implementation(libs.okhttp)
-            implementation(libs.okhttp.logging.interceptor)
+            // Ktor OkHttp-движок (Android). Таймауты задаются на движке в AppModule.
+            implementation(libs.ktor.client.okhttp)
 
             // Coil (загрузка изображений)
             implementation(libs.coil.compose)
@@ -90,6 +94,8 @@ kotlin {
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.robolectric)
             implementation(libs.androidx.test.core)
+            // Ktor MockEngine — мок сети в тестах AgroRepository / Auth-рефреша.
+            implementation(libs.ktor.client.mock)
         }
 
         androidInstrumentedTest.dependencies {
@@ -101,6 +107,8 @@ kotlin {
             // Только для iOS-stub (ComposeUIViewController). На Android не попадает.
             implementation(compose.runtime)
             implementation(compose.ui)
+            // Ktor Darwin-движок (iOS). Компилируется только на macOS.
+            implementation(libs.ktor.client.darwin)
         }
     }
 }

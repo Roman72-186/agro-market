@@ -18,10 +18,9 @@ exifinterface = "1.3.7"
 datastore = "1.0.0"
 
 # --- Network ---
-retrofit = "2.9.0"
-okhttp = "4.12.0"
-# Retrofit <-> kotlinx.serialization converter (заменил converter-gson).
-retrofitKotlinxConverter = "1.0.0"
+# Ktor 3.0.3 — последняя 3.0.x на тулчейне Kotlin 2.0.x (3.1.0 перешёл на Kotlin 2.1.0),
+# совместима с Kotlin 2.0.21 / kotlinx-serialization 1.7.3. Тянет coroutines 1.9.0.
+ktor = "3.0.3"
 
 # --- Serialization ---
 # 1.7.3 — каноничная пара к Kotlin 2.0.21 (1.8.0+ нацелен на Kotlin 2.1+).
@@ -33,12 +32,13 @@ accompanist = "0.32.0"
 
 # --- Firebase ---
 firebaseBom = "33.1.2"
-coroutinesPlayServices = "1.7.3"
+# Выровнено на 1.9.0 — версию coroutines, которую тянет Ktor 3.0.3 (избегаем конфликта).
+coroutinesPlayServices = "1.9.0"
 
 # --- Tests ---
 junit = "4.13.2"
 mockk = "1.13.9"
-coroutinesTest = "1.7.3"
+coroutinesTest = "1.9.0"
 robolectric = "4.13"
 androidxTestCore = "1.5.0"
 androidxTestExtJunit = "1.1.5"
@@ -69,11 +69,18 @@ lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lifecycle-ru
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
 hilt-compiler = { group = "com.google.dagger", name = "hilt-compiler", version.ref = "hilt" }
 
-# --- Network ---
-retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
-retrofit-converter-kotlinx-serialization = { group = "com.jakewharton.retrofit", name = "retrofit2-kotlinx-serialization-converter", version.ref = "retrofitKotlinxConverter" }
-okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
-okhttp-logging-interceptor = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "okhttp" }
+# --- Network (Ktor Client) ---
+# Общий код сети (commonMain): ядро, content-negotiation, JSON, логирование, Auth(bearer).
+ktor-client-core = { group = "io.ktor", name = "ktor-client-core", version.ref = "ktor" }
+ktor-client-content-negotiation = { group = "io.ktor", name = "ktor-client-content-negotiation", version.ref = "ktor" }
+ktor-serialization-kotlinx-json = { group = "io.ktor", name = "ktor-serialization-kotlinx-json", version.ref = "ktor" }
+ktor-client-logging = { group = "io.ktor", name = "ktor-client-logging", version.ref = "ktor" }
+ktor-client-auth = { group = "io.ktor", name = "ktor-client-auth", version.ref = "ktor" }
+# Движки: OkHttp на Android, Darwin на iOS.
+ktor-client-okhttp = { group = "io.ktor", name = "ktor-client-okhttp", version.ref = "ktor" }
+ktor-client-darwin = { group = "io.ktor", name = "ktor-client-darwin", version.ref = "ktor" }
+# MockEngine — для unit-тестов сетевого слоя.
+ktor-client-mock = { group = "io.ktor", name = "ktor-client-mock", version.ref = "ktor" }
 
 # --- Serialization ---
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }

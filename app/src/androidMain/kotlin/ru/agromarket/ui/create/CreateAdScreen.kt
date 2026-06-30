@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import ru.agromarket.data.api.PhotoUpload
 import ru.agromarket.data.draft.AdDraft
 import ru.agromarket.data.draft.AdDraftManager
 import ru.agromarket.data.model.*
@@ -311,11 +312,14 @@ class CreateAdViewModel @Inject constructor(
             isLoading = true; error = null
             // Convert photos before creating the ad — fail fast without leaving a server-side draft.
             // Bitmap decode/compress is heavy I/O work; keep it off the main thread.
-            val files = withContext(Dispatchers.IO) {
-                photoUris.mapNotNull { FileUtils.uriToFile(context, it) }
+            // File→bytes происходит здесь (androidMain), т.к. commonMain-репозиторий принимает PhotoUpload.
+            val photos = withContext(Dispatchers.IO) {
+                photoUris.mapNotNull { uri ->
+                    FileUtils.uriToFile(context, uri)?.let { f -> PhotoUpload(f.readBytes(), f.name) }
+                }
             }
-            if (files.size < photoUris.size) {
-                error = "Не удалось обработать фото (${photoUris.size - files.size} из ${photoUris.size}). Попробуйте выбрать другие фото."
+            if (photos.size < photoUris.size) {
+                error = "Не удалось обработать фото (${photoUris.size - photos.size} из ${photoUris.size}). Попробуйте выбрать другие фото."
                 isLoading = false
                 return@launch
             }
@@ -325,7 +329,7 @@ class CreateAdViewModel @Inject constructor(
                     val newAdId = r.data.id
                     // The server checks photos at submit, so a failed upload must stop the flow —
                     // otherwise submit fails with a misleading "минимум 2 фото" while photos exist locally.
-                    when (val uploadResult = repository.uploadPhotos(newAdId, files)) {
+                    when (val uploadResult = repository.uploadPhotos(newAdId, photos)) {
                         is ApiResult.Success -> when (val submitResult = repository.submitAd(newAdId)) {
                             is ApiResult.Success -> {
                                 draftManager.clear() // the ad is published; the draft has served its purpose
@@ -352,19 +356,21 @@ class CreateAdViewModel @Inject constructor(
     private fun resubmitAd(context: android.content.Context, adId: String, onSuccess: () -> Unit) {
         viewModelScope.launch {
             isLoading = true; error = null
-            val files = withContext(Dispatchers.IO) {
-                photoUris.mapNotNull { FileUtils.uriToFile(context, it) }
+            val photos = withContext(Dispatchers.IO) {
+                photoUris.mapNotNull { uri ->
+                    FileUtils.uriToFile(context, uri)?.let { f -> PhotoUpload(f.readBytes(), f.name) }
+                }
             }
-            if (files.size < photoUris.size) {
-                error = "Не удалось обработать фото (${photoUris.size - files.size} из ${photoUris.size}). Попробуйте выбрать другие фото."
+            if (photos.size < photoUris.size) {
+                error = "Не удалось обработать фото (${photoUris.size - photos.size} из ${photoUris.size}). Попробуйте выбрать другие фото."
                 isLoading = false
                 return@launch
             }
             val request = AdCreateRequest(type = type, categoryId = selectedCategoryId!!, regionId = selectedRegionId!!, districtId = selectedDistrictId, localityId = selectedLocalityId, title = title, description = description.ifBlank { null }, price = price.toDoubleOrNull(), phonePrimary = phonePrimary)
             when (val updateResult = repository.updateAd(adId, request)) {
                 is ApiResult.Success -> {
-                    if (files.isNotEmpty()) {
-                        when (val uploadResult = repository.uploadPhotos(adId, files)) {
+                    if (photos.isNotEmpty()) {
+                        when (val uploadResult = repository.uploadPhotos(adId, photos)) {
                             is ApiResult.Error -> {
                                 error = "Не удалось загрузить фото: ${uploadResult.message}"
                                 isLoading = false

@@ -115,7 +115,8 @@ class ProfileViewModel @Inject constructor(private val repository: AgroRepositor
     fun uploadAvatar(context: android.content.Context, uri: Uri) {
         viewModelScope.launch {
             val file = FileUtils.uriToFile(context, uri) ?: return@launch
-            when (val result = repository.uploadAvatar(file)) {
+            // File→bytes на call-site (androidMain): commonMain-репозиторий принимает байты + имя.
+            when (val result = repository.uploadAvatar(file.readBytes(), file.name)) {
                 is ApiResult.Success -> {
                     profile = profile?.copy(avatarUrl = result.data.avatarUrl)
                     saveMessage = "Фото обновлено!"

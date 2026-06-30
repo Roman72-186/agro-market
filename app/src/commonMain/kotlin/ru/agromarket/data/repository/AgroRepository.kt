@@ -1,32 +1,31 @@
 package ru.agromarket.data.repository
 
-import com.google.firebase.messaging.FirebaseMessaging
-import kotlinx.coroutines.tasks.await
+import io.ktor.client.call.body
+import io.ktor.client.plugins.ResponseException
+import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsText
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.MultipartBody
-import okhttp3.RequestBody.Companion.asRequestBody
 import ru.agromarket.data.ApiJson
 import ru.agromarket.data.api.AgroMarketApi
-import ru.agromarket.data.api.TokenManager
+import ru.agromarket.data.api.AdMyListResponse
+import ru.agromarket.data.api.PhotoUpload
+import ru.agromarket.data.api.PushTokenProvider
+import ru.agromarket.data.api.TokenProvider
 import ru.agromarket.data.model.*
-import java.io.File
-import javax.inject.Inject
-import javax.inject.Singleton
 
 sealed class ApiResult<out T> {
     data class Success<T>(val data: T) : ApiResult<T>()
     data class Error(val message: String, val code: Int = 0) : ApiResult<Nothing>()
 }
 
-@Singleton
-class AgroRepository @Inject constructor(
+class AgroRepository(
     private val api: AgroMarketApi,
-    private val tokenManager: TokenManager
+    private val tokenProvider: TokenProvider,
+    private val pushTokenProvider: PushTokenProvider,
 ) {
     suspend fun register(email: String): ApiResult<MessageResponse> = safeCall {
         api.register(RegisterRequest(email))
@@ -37,18 +36,18 @@ class AgroRepository @Inject constructor(
     }
 
     suspend fun setPassword(email: String, code: String, password: String): ApiResult<LoginResponse> {
-        val result = safeCall { api.setPassword(SetPasswordRequest(email, code, password)) }
+        val result = safeCall<LoginResponse> { api.setPassword(SetPasswordRequest(email, code, password)) }
         if (result is ApiResult.Success) {
-            tokenManager.saveTokens(result.data.accessToken, result.data.refreshToken)
+            saveSession(result.data.accessToken, result.data.refreshToken)
             currentPushToken()?.let { registerPushToken(it) }
         }
         return result
     }
 
     suspend fun login(email: String, password: String): ApiResult<LoginResponse> {
-        val result = safeCall { api.login(LoginRequest(email, password)) }
+        val result = safeCall<LoginResponse> { api.login(LoginRequest(email, password)) }
         if (result is ApiResult.Success) {
-            tokenManager.saveTokens(result.data.accessToken, result.data.refreshToken)
+            saveSession(result.data.accessToken, result.data.refreshToken)
             currentPushToken()?.let { registerPushToken(it) }
         }
         return result
@@ -64,7 +63,9 @@ class AgroRepository @Inject constructor(
 
     suspend fun logout() {
         currentPushToken()?.let { unregisterPushToken(it) }
-        tokenManager.clear()
+        tokenProvider.clear()
+        // Сбросить кэш Auth-плагина, иначе он продолжит слать старый токен до первого 401.
+        api.clearTokenCache()
     }
 
     suspend fun getCategories(): ApiResult<List<CategoryTreeResponse>> = safeCall { api.getCategories() }
@@ -80,18 +81,13 @@ class AgroRepository @Inject constructor(
 
     suspend fun getAdDetail(adId: String): ApiResult<AdDetailResponse> = safeCall { api.getAdDetail(adId) }
 
-    suspend fun getMyAds(): ApiResult<List<ru.agromarket.data.api.AdMyListResponse>> = safeCall { api.getMyAds() }
+    suspend fun getMyAds(): ApiResult<List<AdMyListResponse>> = safeCall { api.getMyAds() }
 
     suspend fun createAd(request: AdCreateRequest): ApiResult<AdDetailResponse> = safeCall { api.createAd(request) }
     suspend fun updateAd(adId: String, request: AdCreateRequest): ApiResult<AdDetailResponse> = safeCall { api.updateAd(adId, request) }
 
-    suspend fun uploadPhotos(adId: String, files: List<File>): ApiResult<List<AdPhotoResponse>> = safeCall {
-        val parts = files.map { file ->
-            val requestBody = file.asRequestBody("image/*".toMediaTypeOrNull())
-            MultipartBody.Part.createFormData("files", file.name, requestBody)
-        }
-        api.uploadPhotos(adId, parts)
-    }
+    suspend fun uploadPhotos(adId: String, photos: List<PhotoUpload>): ApiResult<List<AdPhotoResponse>> =
+        safeCall { api.uploadPhotos(adId, photos) }
 
     suspend fun deletePhoto(adId: String, photoId: Int): ApiResult<MessageResponse> = safeCall { api.deletePhoto(adId, photoId) }
 
@@ -105,7 +101,7 @@ class AgroRepository @Inject constructor(
 
     // ---- Monetization: Pro-подписка (Фаза 2, отложена — мок) ----
     suspend fun getSubscriptionPlans(): ApiResult<SubscriptionPlansResponse> {
-        val result = safeCall { api.getSubscriptionPlans() }
+        val result = safeCall<SubscriptionPlansResponse> { api.getSubscriptionPlans() }
         return if (result is ApiResult.Success && result.data.plans.isNotEmpty()) result
         else ApiResult.Success(MonetizationCatalog.DEFAULT_PLANS)
     }
@@ -129,11 +125,8 @@ class AgroRepository @Inject constructor(
     suspend fun getProfile(): ApiResult<ProfileResponse> = safeCall { api.getProfile() }
     suspend fun updateProfile(request: ProfileUpdateRequest): ApiResult<ProfileResponse> = safeCall { api.updateProfile(request) }
 
-    suspend fun uploadAvatar(file: File): ApiResult<AvatarResponse> = safeCall {
-        val requestBody = file.asRequestBody("image/*".toMediaTypeOrNull())
-        val part = MultipartBody.Part.createFormData("file", file.name, requestBody)
-        api.uploadAvatar(part)
-    }
+    suspend fun uploadAvatar(bytes: ByteArray, filename: String): ApiResult<AvatarResponse> =
+        safeCall { api.uploadAvatar(bytes, filename) }
 
     suspend fun changePassword(currentPassword: String, newPassword: String): ApiResult<MessageResponse> = safeCall {
         api.changePassword(ChangePasswordRequest(currentPassword, newPassword))
@@ -142,32 +135,50 @@ class AgroRepository @Inject constructor(
     suspend fun registerPushToken(token: String): ApiResult<MessageResponse> = safeCall { api.registerPushToken(PushTokenRegisterRequest(token, "android")) }
     suspend fun unregisterPushToken(token: String): ApiResult<MessageResponse> = safeCall { api.unregisterPushToken(token) }
 
+    /** Сохранить токены и сбросить кэш Auth-плагина, чтобы первый же запрос ушёл уже с токеном. */
+    private suspend fun saveSession(access: String, refresh: String) {
+        tokenProvider.saveTokens(access, refresh)
+        api.clearTokenCache()
+    }
+
     /**
-     * Current FCM registration token, or null if Firebase isn't initialized (e.g. no
+     * Current push registration token, or null if push isn't available (e.g. no
      * google-services.json yet) or the call otherwise fails.
      */
-    private suspend fun currentPushToken(): String? = try {
-        FirebaseMessaging.getInstance().token.await()
-    } catch (_: Exception) { null }
+    private suspend fun currentPushToken(): String? = pushTokenProvider.currentToken()
 
-    private suspend fun <T> safeCall(call: suspend () -> retrofit2.Response<T>): ApiResult<T> {
+    /**
+     * Оборачивает сетевой вызов в [ApiResult]. При expectSuccess=true не-2xx бросает
+     * [ResponseException] — из неё берём код и тело для [parseErrorDetail]. Успех с пустым телом
+     * (десериализация не удалась) — [ApiResult.Error] «Пустой ответ сервера». Прочее → ошибка соединения.
+     */
+    suspend inline fun <reified T> safeCall(call: () -> HttpResponse): ApiResult<T> {
         return try {
             val response = call()
-            if (response.isSuccessful) {
-                val body = response.body()
-                if (body != null) ApiResult.Success(body)
-                else ApiResult.Error("Пустой ответ сервера", response.code())
-            } else {
-                val errorBody = response.errorBody()?.string()
-                val detail = try {
-                    val root = ApiJson.parseToJsonElement(errorBody!!).jsonObject["detail"]
-                    parseErrorDetail(root)
-                } catch (_: Exception) { null }
-                ApiResult.Error(detail ?: "Ошибка сервера", response.code())
+            try {
+                ApiResult.Success(response.body<T>())
+            } catch (_: Exception) {
+                emptyBodyError(response)
             }
+        } catch (e: ResponseException) {
+            responseError(e)
         } catch (e: Exception) {
             ApiResult.Error(e.message ?: "Ошибка соединения")
         }
+    }
+
+    @PublishedApi
+    internal fun emptyBodyError(response: HttpResponse): ApiResult<Nothing> =
+        ApiResult.Error("Пустой ответ сервера", response.status.value)
+
+    @PublishedApi
+    internal suspend fun responseError(e: ResponseException): ApiResult<Nothing> {
+        val code = e.response.status.value
+        val detail = try {
+            val root = ApiJson.parseToJsonElement(e.response.bodyAsText()).jsonObject["detail"]
+            parseErrorDetail(root)
+        } catch (_: Exception) { null }
+        return ApiResult.Error(detail ?: "Ошибка сервера", code)
     }
 
     /**
