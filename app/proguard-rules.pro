@@ -36,11 +36,3 @@
 # OkHttp
 -dontwarn okhttp3.**
 -dontwarn okio.**
-
-# Hilt / Dagger
--keep class dagger.hilt.** { *; }
--keep class * extends dagger.hilt.android.internal.managers.* { *; }
--keepclasseswithmembers class * {
-    @dagger.* <methods>;
-}
--dontwarn dagger.hilt.**

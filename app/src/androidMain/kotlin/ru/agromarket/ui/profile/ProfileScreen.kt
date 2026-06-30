@@ -21,11 +21,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import coil.compose.AsyncImage
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import ru.agromarket.data.api.AdMyListResponse
 import ru.agromarket.data.model.ProfileResponse
@@ -42,10 +41,8 @@ import ru.agromarket.ui.theme.AgroAccentClay
 import ru.agromarket.utils.FileUtils
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
-import javax.inject.Inject
 
-@HiltViewModel
-class ProfileViewModel @Inject constructor(private val repository: AgroRepository) : ViewModel() {
+class ProfileViewModel(private val repository: AgroRepository) : ViewModel() {
     var profile by mutableStateOf<ProfileResponse?>(null)
     var myAds by mutableStateOf<List<AdMyListResponse>>(emptyList())
     var isLoading by mutableStateOf(true)
@@ -138,7 +135,7 @@ fun ProfileScreen(
     onChangePassword: () -> Unit,
     onBoost: (String) -> Unit = {},
     onSubscription: () -> Unit = {},
-    viewModel: ProfileViewModel = hiltViewModel()
+    viewModel: ProfileViewModel = koinViewModel()
 ) {
     val context = LocalContext.current
     val avatarLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->

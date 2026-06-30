@@ -15,10 +15,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import ru.agromarket.data.model.SubscriptionPlan
 import ru.agromarket.data.model.SubscriptionResponse
@@ -28,10 +27,8 @@ import ru.agromarket.data.repository.AgroRepository
 import ru.agromarket.data.repository.ApiResult
 import ru.agromarket.ui.components.AppTopBar
 import ru.agromarket.ui.theme.AgroAccentClay
-import javax.inject.Inject
 
-@HiltViewModel
-class SubscriptionViewModel @Inject constructor(
+class SubscriptionViewModel(
     private val repository: AgroRepository,
     private val payment: PaymentGateway,
 ) : ViewModel() {
@@ -84,7 +81,7 @@ class SubscriptionViewModel @Inject constructor(
 fun SubscriptionScreen(
     onBack: () -> Unit,
     onSubscribed: () -> Unit = {},
-    viewModel: SubscriptionViewModel = hiltViewModel(),
+    viewModel: SubscriptionViewModel = koinViewModel(),
 ) {
     LaunchedEffect(viewModel.success) {
         if (viewModel.success) onSubscribed()

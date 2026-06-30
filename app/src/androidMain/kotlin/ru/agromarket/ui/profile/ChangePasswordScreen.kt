@@ -11,20 +11,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import ru.agromarket.data.repository.AgroRepository
 import ru.agromarket.data.repository.ApiResult
 import ru.agromarket.ui.auth.MIN_PASSWORD_LENGTH
 import ru.agromarket.ui.components.AppTopBar
 import ru.agromarket.ui.components.ErrorBanner
-import javax.inject.Inject
 
-@HiltViewModel
-class ChangePasswordViewModel @Inject constructor(
+class ChangePasswordViewModel(
     private val repository: AgroRepository
 ) : ViewModel() {
     var currentPassword by mutableStateOf("")
@@ -52,7 +49,7 @@ class ChangePasswordViewModel @Inject constructor(
 fun ChangePasswordScreen(
     onSuccess: () -> Unit,
     onBack: () -> Unit,
-    viewModel: ChangePasswordViewModel = hiltViewModel()
+    viewModel: ChangePasswordViewModel = koinViewModel()
 ) {
     var currentVisible by remember { mutableStateOf(false) }
     var newVisible by remember { mutableStateOf(false) }

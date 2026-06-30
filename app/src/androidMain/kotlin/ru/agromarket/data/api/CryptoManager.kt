@@ -8,8 +8,6 @@ import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /**
  * Encrypts/decrypts short secrets (auth tokens) with an AES-256/GCM key held in the
@@ -18,8 +16,7 @@ import javax.inject.Singleton
  *
  * Output format: Base64(IV || ciphertext+tag). GCM IV is 12 bytes.
  */
-@Singleton
-class CryptoManager @Inject constructor() {
+class CryptoManager {
 
     private val keyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
 

@@ -17,19 +17,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import ru.agromarket.data.model.BoostPaymentType
 import ru.agromarket.data.payment.PaymentGateway
 import ru.agromarket.data.repository.ApiResult
 import ru.agromarket.ui.components.AppTopBar
-import javax.inject.Inject
 
-@HiltViewModel
-class BoostPurchaseViewModel @Inject constructor(
+class BoostPurchaseViewModel(
     private val payment: PaymentGateway,
 ) : ViewModel() {
     var selectedType by mutableStateOf(BoostPaymentType.BOOST_30)
@@ -59,7 +56,7 @@ fun BoostPurchaseScreen(
     adId: String,
     onSuccess: () -> Unit,
     onBack: () -> Unit,
-    viewModel: BoostPurchaseViewModel = hiltViewModel(),
+    viewModel: BoostPurchaseViewModel = koinViewModel(),
 ) {
     val context = LocalContext.current
 

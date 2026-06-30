@@ -33,11 +33,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.hilt.navigation.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import coil.compose.AsyncImage
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import ru.agromarket.data.model.AdDetailResponse
 import ru.agromarket.data.repository.AgroRepository
@@ -49,10 +48,8 @@ import ru.agromarket.ui.components.StatusBadge
 import ru.agromarket.ui.theme.*
 import java.text.NumberFormat
 import java.util.Locale
-import javax.inject.Inject
 
-@HiltViewModel
-class AdDetailViewModel @Inject constructor(
+class AdDetailViewModel(
     private val repository: AgroRepository
 ) : ViewModel() {
     var ad by mutableStateOf<AdDetailResponse?>(null)
@@ -98,7 +95,7 @@ class AdDetailViewModel @Inject constructor(
 
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-fun AdDetailScreen(adId: String, onBack: () -> Unit, onEditAd: (String) -> Unit = {}, viewModel: AdDetailViewModel = hiltViewModel()) {
+fun AdDetailScreen(adId: String, onBack: () -> Unit, onEditAd: (String) -> Unit = {}, viewModel: AdDetailViewModel = koinViewModel()) {
     val priceFormat = remember { NumberFormat.getNumberInstance(Locale("ru")) }
     val context = LocalContext.current
     var fullscreenPhotoIndex by remember { mutableStateOf<Int?>(null) }

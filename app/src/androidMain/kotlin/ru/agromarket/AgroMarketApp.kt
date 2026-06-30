@@ -4,13 +4,25 @@ import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
-import dagger.hilt.android.HiltAndroidApp
+import org.koin.android.ext.koin.androidContext
+import org.koin.core.context.GlobalContext
+import org.koin.core.context.startKoin
+import ru.agromarket.di.androidModule
+import ru.agromarket.di.commonModule
 
-@HiltAndroidApp
 class AgroMarketApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // Guard: Robolectric instantiates this Application once per test in a shared JVM, so a
+        // second startKoin would throw KoinApplicationAlreadyStartedException. In production
+        // onCreate runs once and the guard is a no-op.
+        if (GlobalContext.getOrNull() == null) {
+            startKoin {
+                androidContext(this@AgroMarketApp)
+                modules(commonModule, androidModule)
+            }
+        }
         createNotificationChannel()
     }
 

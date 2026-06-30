@@ -6,25 +6,22 @@ import android.content.Intent
 import androidx.core.app.NotificationCompat
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
-import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import org.koin.android.ext.android.inject
 import ru.agromarket.MainActivity
 import ru.agromarket.R
 import ru.agromarket.data.repository.AgroRepository
-import javax.inject.Inject
 
 /**
  * Receives FCM push notifications (e.g. moderation status changes) and shows them in the
  * status bar with a deep link to the relevant ad. Token registration is best-effort and
  * silently no-ops until google-services.json is added (no FirebaseApp = no token).
  */
-@AndroidEntryPoint
 class AgroFirebaseMessagingService : FirebaseMessagingService() {
 
-    @Inject
-    lateinit var repository: AgroRepository
+    private val repository: AgroRepository by inject()
 
     private val serviceScope = CoroutineScope(Dispatchers.IO)
 

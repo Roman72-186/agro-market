@@ -6,13 +6,10 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import ru.agromarket.data.ApiJson
-import javax.inject.Inject
-import javax.inject.Singleton
 
 private val Context.draftDataStore: DataStore<Preferences> by preferencesDataStore(name = "ad_draft_prefs")
 
@@ -43,9 +40,8 @@ data class AdDraft(
 }
 
 /** Persists the create-ad wizard draft so an interrupted submission can be resumed (Avito pattern). */
-@Singleton
-class AdDraftManager @Inject constructor(
-    @ApplicationContext private val context: Context,
+class AdDraftManager(
+    private val context: Context,
 ) {
     companion object {
         private val DRAFT_JSON = stringPreferencesKey("create_ad_draft")

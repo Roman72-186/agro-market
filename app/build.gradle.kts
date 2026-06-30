@@ -3,9 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.hilt.android)
     alias(libs.plugins.kotlin.serialization)
-    kotlin("kapt")
 }
 
 // google-services.json isn't always checked in; without it this plugin fails the build.
@@ -39,6 +37,13 @@ kotlin {
             implementation(libs.ktor.serialization.kotlinx.json)
             implementation(libs.ktor.client.logging)
             implementation(libs.ktor.client.auth)
+
+            // Koin DI — модули и data-биндинги (AgroMarketApi/AgroRepository/PaymentGateway) в commonMain.
+            // koin-compose-viewmodel даёт koinViewModel() для call-site'ов экранов (виден из androidMain).
+            implementation(project.dependencies.platform(libs.koin.bom))
+            implementation(libs.koin.core)
+            implementation(libs.koin.compose)
+            implementation(libs.koin.compose.viewmodel)
         }
 
         androidMain.dependencies {
@@ -55,16 +60,16 @@ kotlin {
 
             // Navigation
             implementation(libs.navigation.compose)
-            implementation(libs.hilt.navigation.compose)
 
             // Lifecycle
             implementation(libs.lifecycle.viewmodel.compose)
             implementation(libs.lifecycle.runtime.compose)
 
-            // Hilt DI (runtime)
-            implementation(libs.hilt.android)
+            // Koin (Android): startKoin/androidContext, by inject() для Activity/Service, viewModel-биндинги.
+            implementation(project.dependencies.platform(libs.koin.bom))
+            implementation(libs.koin.android)
 
-            // Ktor OkHttp-движок (Android). Таймауты задаются на движке в AppModule.
+            // Ktor OkHttp-движок (Android). Таймауты задаются на движке в androidModule.
             implementation(libs.ktor.client.okhttp)
 
             // Coil (загрузка изображений)
@@ -96,6 +101,9 @@ kotlin {
             implementation(libs.androidx.test.core)
             // Ktor MockEngine — мок сети в тестах AgroRepository / Auth-рефреша.
             implementation(libs.ktor.client.mock)
+            // Koin verify() — рантайм-проверка графа DI как обычный JVM-тест (см. KoinModulesVerifyTest).
+            implementation(project.dependencies.platform(libs.koin.bom))
+            implementation(libs.koin.test)
         }
 
         androidInstrumentedTest.dependencies {
@@ -153,14 +161,4 @@ android {
             isReturnDefaultValues = true
         }
     }
-}
-
-// Hilt annotation processor (kapt). Единственный потребитель kapt — Hilt;
-// будет полностью устранён в Фазе 1c (Hilt → Koin).
-dependencies {
-    add("kapt", libs.hilt.compiler)
-}
-
-kapt {
-    correctErrorTypes = true
 }

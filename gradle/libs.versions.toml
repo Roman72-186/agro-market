@@ -3,15 +3,20 @@
 agp = "8.2.2"
 kotlin = "2.0.21"
 composeMultiplatform = "1.7.3"
-hilt = "2.50"
 googleServices = "4.4.2"
+# Koin 4.0.x — последняя линия под Kotlin 2.0.x / Compose MP 1.7.x (4.1+ перешла на Kotlin 2.1).
+# Версия задаётся одним пином через koin-bom; остальные koin-артефакты — без версии.
+koin = "4.0.4"
 
 # --- AndroidX / Compose ---
 composeBom = "2024.02.00"
 activityCompose = "1.8.2"
-navigationCompose = "2.7.7"
-hiltNavigationCompose = "1.1.0"
-lifecycle = "2.7.0"
+# navigation-compose 2.8.x — выровнено с lifecycle 2.8 (поставляет ViewModelStoreOwner для koinViewModel).
+navigationCompose = "2.8.5"
+# lifecycle 2.8.x — koin-compose-viewmodel тянет lifecycle 2.8 (JetBrains MP-линия);
+# держим ВСЕ lifecycle-артефакты на одной 2.8.x, иначе koinViewModel и navigation резолвят
+# разные ViewModelStore. Бамп с 2.7.0 (Фаза 1c).
+lifecycle = "2.8.7"
 coreKtx = "1.12.0"
 coreSplashscreen = "1.0.1"
 exifinterface = "1.3.7"
@@ -59,15 +64,19 @@ activity-compose = { group = "androidx.activity", name = "activity-compose", ver
 
 # --- Navigation ---
 navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
-hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hiltNavigationCompose" }
 
 # --- Lifecycle ---
 lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycle" }
 lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "lifecycle" }
 
-# --- Hilt ---
-hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
-hilt-compiler = { group = "com.google.dagger", name = "hilt-compiler", version.ref = "hilt" }
+# --- DI (Koin) ---
+# BOM фиксирует версию всех koin-артефактов одним пином (см. [versions].koin).
+koin-bom = { group = "io.insert-koin", name = "koin-bom", version.ref = "koin" }
+koin-core = { group = "io.insert-koin", name = "koin-core" }
+koin-compose = { group = "io.insert-koin", name = "koin-compose" }
+koin-compose-viewmodel = { group = "io.insert-koin", name = "koin-compose-viewmodel" }
+koin-android = { group = "io.insert-koin", name = "koin-android" }
+koin-test = { group = "io.insert-koin", name = "koin-test" }
 
 # --- Network (Ktor Client) ---
 # Общий код сети (commonMain): ядро, content-negotiation, JSON, логирование, Auth(bearer).
@@ -120,7 +129,5 @@ kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
-kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
 compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
-hilt-android = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
 google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }

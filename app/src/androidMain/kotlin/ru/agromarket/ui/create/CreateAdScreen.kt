@@ -20,10 +20,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
@@ -39,12 +38,10 @@ import ru.agromarket.data.repository.ApiResult
 import ru.agromarket.ui.components.AppTopBar
 import ru.agromarket.ui.theme.AgroAccentClay
 import ru.agromarket.utils.FileUtils
-import javax.inject.Inject
 
 enum class CreateStep { TYPE, CATEGORY, SUBCATEGORY, FORM }
 
-@HiltViewModel
-class CreateAdViewModel @Inject constructor(
+class CreateAdViewModel(
     private val repository: AgroRepository,
     private val draftManager: AdDraftManager,
 ) : ViewModel() {
@@ -447,7 +444,7 @@ fun SearchablePickerDialog(title: String, items: List<Pair<Int, String>>, onSele
 
 @OptIn(ExperimentalMaterial3Api::class, FlowPreview::class)
 @Composable
-fun CreateAdScreen(onSuccess: () -> Unit, onBack: () -> Unit, editAdId: String? = null, viewModel: CreateAdViewModel = hiltViewModel()) {
+fun CreateAdScreen(onSuccess: () -> Unit, onBack: () -> Unit, editAdId: String? = null, viewModel: CreateAdViewModel = koinViewModel()) {
     val context = LocalContext.current
     val photoPickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(CreateAdViewModel.MAX_PHOTOS)) { uris -> if (uris.isNotEmpty()) viewModel.addPhotos(uris) }
     val fallbackLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris -> if (uris.isNotEmpty()) viewModel.addPhotos(uris) }

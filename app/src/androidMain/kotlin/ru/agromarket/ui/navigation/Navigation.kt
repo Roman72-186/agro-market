@@ -36,7 +36,7 @@ import ru.agromarket.ui.profile.ProfileScreen
 import ru.agromarket.ui.profile.ProfileViewModel
 import ru.agromarket.ui.boost.BoostPurchaseScreen
 import ru.agromarket.ui.subscription.SubscriptionScreen
-import androidx.hilt.navigation.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 
 sealed class Screen(val route: String) {
     object Login : Screen("login")
@@ -176,7 +176,7 @@ fun MainNavigation(isLoggedIn: Boolean, pendingAdId: String? = null, onPendingAd
                 )
             }
             composable(Screen.Profile.route) { backStackEntry ->
-                val profileViewModel: ProfileViewModel = hiltViewModel()
+                val profileViewModel: ProfileViewModel = koinViewModel()
                 // После покупки boost дочерний экран ставит флаг — обновляем «Мои объявления».
                 val adsChanged by backStackEntry.savedStateHandle
                     .getStateFlow("ads_changed", false)

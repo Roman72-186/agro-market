@@ -4,8 +4,6 @@ import kotlinx.coroutines.delay
 import ru.agromarket.data.model.SubscriptionResponse
 import ru.agromarket.data.repository.AgroRepository
 import ru.agromarket.data.repository.ApiResult
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /**
  * Платёжный «шов»: UI/ViewModel зависят только от этого интерфейса.
@@ -25,8 +23,7 @@ interface PaymentGateway {
     suspend fun purchaseSubscription(plan: String, months: Int): ApiResult<SubscriptionResponse>
 }
 
-@Singleton
-class SimulatedPaymentGateway @Inject constructor(
+class SimulatedPaymentGateway(
     private val repository: AgroRepository
 ) : PaymentGateway {
 

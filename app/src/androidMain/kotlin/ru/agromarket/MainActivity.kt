@@ -17,17 +17,14 @@ import androidx.core.animation.doOnEnd
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import dagger.hilt.android.AndroidEntryPoint
+import org.koin.android.ext.android.inject
 import ru.agromarket.data.api.TokenManager
 import ru.agromarket.ui.navigation.MainNavigation
 import ru.agromarket.ui.theme.AgroMarketTheme
-import javax.inject.Inject
 
-@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
-    @Inject
-    lateinit var tokenManager: TokenManager
+    private val tokenManager: TokenManager by inject()
 
     private var pendingAdId by mutableStateOf<String?>(null)
 

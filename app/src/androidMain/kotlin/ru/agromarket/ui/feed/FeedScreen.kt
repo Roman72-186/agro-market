@@ -16,10 +16,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.drop
@@ -35,7 +34,6 @@ import ru.agromarket.ui.components.ErrorBanner
 import ru.agromarket.ui.components.ErrorState
 import ru.agromarket.ui.components.FeedLoadingState
 import ru.agromarket.ui.components.categoryIconFor
-import javax.inject.Inject
 
 // Quick categories with subcategories; icons come from categoryIconFor(name)
 data class QuickCategory(val name: String, val subs: List<String>)
@@ -52,8 +50,7 @@ val QUICK_CATEGORIES = listOf(
     QuickCategory("Прочее", listOf("Инструменты", "Тара", "Стройматериалы")),
 )
 
-@HiltViewModel
-class FeedViewModel @Inject constructor(
+class FeedViewModel(
     private val repository: AgroRepository
 ) : ViewModel() {
     var ads by mutableStateOf<List<AdListResponse>>(emptyList())
@@ -121,7 +118,7 @@ class FeedViewModel @Inject constructor(
 
 @OptIn(ExperimentalMaterial3Api::class, FlowPreview::class, ExperimentalFoundationApi::class)
 @Composable
-fun FeedScreen(onAdClick: (String) -> Unit, onProfileClick: () -> Unit, viewModel: FeedViewModel = hiltViewModel()) {
+fun FeedScreen(onAdClick: (String) -> Unit, onProfileClick: () -> Unit, viewModel: FeedViewModel = koinViewModel()) {
 
     // Debounce text input: fire the network search ~400ms after the user stops typing.
     LaunchedEffect(Unit) {

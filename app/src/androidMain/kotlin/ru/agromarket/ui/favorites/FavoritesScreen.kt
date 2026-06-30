@@ -31,10 +31,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import ru.agromarket.data.model.FavoriteResponse
 import ru.agromarket.data.repository.AgroRepository
@@ -43,13 +42,11 @@ import ru.agromarket.ui.components.AppTopBar
 import ru.agromarket.ui.components.EmptyState
 import ru.agromarket.ui.components.ErrorState
 import ru.agromarket.ui.components.FavoriteRow
-import javax.inject.Inject
 
 /** A lot is "alive" while it is active (or its status is unknown); dead lots are dimmed and grouped last. */
 private fun isAlive(fav: FavoriteResponse) = fav.adStatus == null || fav.adStatus == "active"
 
-@HiltViewModel
-class FavoritesViewModel @Inject constructor(private val repository: AgroRepository) : ViewModel() {
+class FavoritesViewModel(private val repository: AgroRepository) : ViewModel() {
     var favorites by mutableStateOf<List<FavoriteResponse>>(emptyList())
     var isLoading by mutableStateOf(true)
     var error by mutableStateOf<String?>(null)
@@ -91,7 +88,7 @@ class FavoritesViewModel @Inject constructor(private val repository: AgroReposit
 fun FavoritesScreen(
     onAdClick: (String) -> Unit,
     onGoToFeed: () -> Unit,
-    viewModel: FavoritesViewModel = hiltViewModel(),
+    viewModel: FavoritesViewModel = koinViewModel(),
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
