@@ -1,6 +1,6 @@
 # Session Handoff
 
-**Updated:** 2026-06-29 +0500
+**Updated:** 2026-06-30 +0500
 **Agent:** Claude Code
 **Workspace:** C:\Users\User\Desktop\Project
 **Active project:** C:\Users\User\Desktop\Project\agromarket-android.tar_1\agromarket-android
@@ -45,8 +45,8 @@ Android должен оставаться рабочим на каждом ша�
 |---|---|---|---|
 | 0 | Каркас CMP + bump Kotlin 1.9→2.0, KMP+Compose MP плагины, source sets | Windows | **ГОТОВА** (закоммичено `d6a1657`, гейт зелёный) |
 | 1a | Gson → kotlinx.serialization | Windows | **ГОТОВА** (`4777d6a`, гейт зелёный) |
-| 1b | Retrofit/OkHttp → Ktor | Windows | **СЛЕДУЮЩАЯ** |
-| 1c | Hilt → Koin | Windows | не начата |
+| 1b | Retrofit/OkHttp → Ktor | Windows | **ГОТОВА** (`50942ff`, гейт зелёный, на ревью владельца) |
+| 1c | Hilt → Koin | Windows | **СЛЕДУЮЩАЯ** |
 | 1d | Coil 2→3, выпил Accompanist | Windows | не начата |
 | 1e | DataStore → multiplatform | Windows | не начата |
 | 2 | expect/actual платформенного слоя (Android actual) | Windows | не начата |
@@ -57,9 +57,13 @@ Android должен оставаться рабочим на каждом ша�
 
 ## Current State
 
-- **Фаза 0 ГОТОВА и закоммичена. HEAD зелёный** (`assembleDebug` + `testDebugUnitTest`,
-  35 тестов, 0 failures). Стек: Kotlin 2.0.21, Compose MP 1.7.3, AGP 8.2.2 (не повышать —
-  с AGP 9.0 связка KMP + `com.android.application` ломается).
+- **Фаза 1b ГОТОВА и закоммичена (`50942ff`). HEAD зелёный** — гейт прогнан независимо:
+  `compileCommonMainKotlinMetadata` + `assembleDebug` + `testDebugUnitTest` BUILD SUCCESSFUL,
+  35 тестов (XML: 0 failures/errors; `AuthRefreshTest`=5, `AgroRepositoryTest`=4). **Ждёт ревью
+  владельца `git diff 8ec19ec..50942ff` перед запуском Фазы 1c.**
+- **Фаза 0 ГОТОВА и закоммичена** (`d6a1657`). Стек: Kotlin 2.0.21, Compose MP 1.7.3,
+  AGP 8.2.2 (не повышать — с AGP 9.0 связка KMP + `com.android.application` ломается),
+  **Ktor 3.0.3** (последняя 3.0.x на Kotlin 2.0.x; 3.1+ требует Kotlin 2.1), coroutines 1.9.0.
 - **Git-базлайн наведён двумя коммитами** (репо `agromarket-android` — отдельный, НЕ запушен):
   - `c659fa5` — незакоммиченная работа прошлых сессий (монетизация, доки, FCM).
   - `d6a1657` — Фаза 0 (KMP + Compose MP каркас).
@@ -81,18 +85,37 @@ Android должен оставаться рабочим на каждом ша�
 
 ## Next Steps
 
-1. **Запустить Фазу 1b** (Retrofit/OkHttp → Ktor) отдельным `general-purpose` агентом прямо в репо.
-   DoD = `assembleDebug` + `testDebugUnitTest` + `compileCommonMainKotlinMetadata` зелёные;
-   сетевой слой (`AgroMarketApi`, `AgroRepository`, интерсепторы) в `commonMain`; версии через
-   Context7; отдельный коммит фазы. **Переиспользовать `ApiJson` из Фазы 1a** в Ktor
-   `ContentNegotiation` (`json(ApiJson)`); НЕ менять флаги `encodeDefaults=false` (иначе PUT
-   `ProfileUpdateRequest` зашлёт null-дефолты).
-2. По завершении 1b — ревью `git diff` + гейт (вкл. `compileCommonMainKotlinMetadata`), обновить
-   handoff, запустить 1c. Цикл до Фазы 2.
+1. **Владельцу: отревьюить `git diff 8ec19ec..50942ff` (Фаза 1b).** Точки внимания, которые
+   флагнул агент (см. «Заметки по фазам → Фаза 1b»): кэш токенов Ktor Auth + `clearTokenCache`;
+   `expectSuccess`+Auth-retry порядок; дрейф семантики пустого/малформленного тела; параметр
+   `baseUrl` в фабрике клиента.
+2. **После ревью — запустить Фазу 1c** (Hilt → Koin) отдельным `general-purpose` агентом прямо
+   в репо. DoD = `assembleDebug` + `testDebugUnitTest` + `compileCommonMainKotlinMetadata`
+   зелёные; DI (`AppModule`, `PaymentModule`) в `commonMain`; ViewModel'и на multiplatform
+   `lifecycle` + `koinViewModel()`; **полностью убрать kapt** (Hilt — единственный потребитель);
+   шов `PaymentGateway` сохранить (биндинг в Koin-модуле); версии Koin через Context7; отдельный
+   коммит фазы. Цикл (ревью → следующая фаза) до Фазы 2.
 3. К Фазе 3 — решить вопрос Mac-окружения и Apple Developer Program.
 
 ## Заметки по фазам (накопительно)
 
+- **Фаза 1b** (`50942ff`): Ktor **3.0.3** (потолок при Kotlin 2.0.21; 3.1+ требует Kotlin 2.1).
+  `AgroMarketApi` теперь класс над `HttpClient` (методы возвращают `HttpResponse`, десериализация
+  и ошибки — в `safeCall`, `reified inline`). Сетевой слой + `AgroRepository` (+`ApiResult`/
+  `safeCall`/`parseErrorDetail`) + `createHttpClient` + интерфейсы `TokenProvider`/
+  `PushTokenProvider` + `MonetizationCatalog` → `commonMain`. В `androidMain` остались actual:
+  `AppModule` (Hilt, OkHttp-движок, таймауты 30/30/60), `TokenManagerTokenProvider`,
+  `FirebasePushTokenProvider`. `AuthInterceptor`/`TokenAuthenticator` удалены — их забрал Ktor
+  `Auth(bearer)` (`loadTokens`/`refreshTokens`, `markAsRefreshTokenRequest` против рекурсии,
+  `sendWithoutRequest` исключает `/auth/`, guard «`/auth/` не триггерит рефреш»). Multipart на
+  `ByteArray` (`PhotoUpload`), `File→bytes` на call-site (`CreateAdScreen`, `ProfileScreen`).
+  Тесты на `MockEngine`: `AgroRepositoryTest` (4), `TokenAuthenticatorTest`→`AuthRefreshTest` (5).
+  **4 пункта на ревью владельца:** (1) Ktor Auth кэширует `loadTokens` (вкл. null) — после
+  логина/логаута зовём `api.clearTokenCache()` (новый шов, покрыт тестом); (2) `expectSuccess`+
+  Auth-retry: ретрай на 401 идёт ДО броска — подтверждено тестом на моках, на проде проверить
+  поведение бэкенда; (3) малформленный JSON в 2xx теперь даёт `Error("Пустой ответ сервера")`
+  вместо `"Ошибка соединения"` (оба `Error`, для FastAPI недостижимо); (4) в `createHttpClient`
+  добавлен параметр `baseUrl` (не был в исходной сигнатуре ТЗ, но нужен).
 - **Фаза 1a:** kotlinx-serialization-json `1.7.3`, retrofit2-kotlinx-serialization-converter `1.0.0`
   (Retrofit пока остаётся, конвертер уйдёт в 1b). `ApiJson` (`commonMain/data/ApiJson.kt`) —
   единый `Json { ignoreUnknownKeys; coerceInputValues }`, переиспользовать в Ktor.
